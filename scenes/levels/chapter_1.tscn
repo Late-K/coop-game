@@ -1,0 +1,843 @@
+[gd_scene load_steps=51 format=3]
+
+[ext_resource type="Script" path="res://scenes/levels/level.gd" id="1_r"]
+[ext_resource type="PackedScene" path="res://scenes/puzzles/symbol_code/keypad.tscn" id="2_r"]
+[ext_resource type="PackedScene" path="res://scenes/puzzles/symbol_code/code_monitor.tscn" id="3_r"]
+[ext_resource type="PackedScene" path="res://scenes/props/door.tscn" id="4_r"]
+[ext_resource type="Script" path="res://scenes/puzzles/symbol_code/symbol_code_puzzle.gd" id="5_r"]
+[ext_resource type="PackedScene" path="res://scenes/items/item_tube.tscn" id="6_r"]
+[ext_resource type="PackedScene" path="res://scenes/props/save_terminal.tscn" id="7_r"]
+[ext_resource type="PackedScene" path="res://scenes/items/pickup.tscn" id="8_r"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/enemy.tscn" id="9_r"]
+[ext_resource type="Script" path="res://scenes/story/story_trigger.gd" id="10_r"]
+[ext_resource type="Script" path="res://scenes/zones/temperature_zone.gd" id="11_r"]
+[ext_resource type="PackedScene" path="res://scenes/props/heater.tscn" id="12_r"]
+[ext_resource type="Script" path="res://scenes/props/power_light.gd" id="13_r"]
+[ext_resource type="Script" path="res://scenes/puzzles/symbol_code/wall_code_display.gd" id="14_r"]
+[ext_resource type="Script" path="res://scenes/story/examine_spot.gd" id="15_r"]
+[ext_resource type="Script" path="res://scenes/story/facility_map.gd" id="16_r"]
+[ext_resource type="Script" path="res://scenes/puzzles/perimeter/beacon_lamp.gd" id="17_r"]
+[ext_resource type="Script" path="res://scenes/puzzles/perimeter/beacon_network.gd" id="18_r"]
+[ext_resource type="Script" path="res://scenes/puzzles/perimeter/perimeter_map.gd" id="19_r"]
+[ext_resource type="Script" path="res://scenes/zones/environment_zone.gd" id="20_r"]
+
+[sub_resource type="Environment" id="Environment_facility"]
+background_mode = 1
+background_color = Color(0.02, 0.02, 0.03, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.33, 0.36, 0.45, 1)
+ambient_light_energy = 0.45
+fog_enabled = true
+fog_light_color = Color(0.05, 0.05, 0.07, 1)
+fog_density = 0.035
+
+[sub_resource type="Environment" id="Environment_whiteout"]
+background_mode = 1
+background_color = Color(0.45, 0.5, 0.56, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.6, 0.65, 0.72, 1)
+ambient_light_energy = 0.6
+fog_enabled = true
+fog_mode = 1
+fog_light_color = Color(0.45, 0.5, 0.56, 1)
+fog_density = 1.0
+fog_depth_begin = 9.0
+fog_depth_end = 17.0
+
+[sub_resource type="StandardMaterial3D" id="Material_wall"]
+albedo_color = Color(0.42, 0.43, 0.46, 1)
+
+[sub_resource type="StandardMaterial3D" id="Material_floor"]
+albedo_color = Color(0.24, 0.25, 0.27, 1)
+
+[sub_resource type="StandardMaterial3D" id="Material_block"]
+albedo_color = Color(0.36, 0.34, 0.33, 1)
+
+[sub_resource type="StandardMaterial3D" id="Material_snow"]
+albedo_color = Color(0.78, 0.82, 0.88, 1)
+
+[sub_resource type="StandardMaterial3D" id="Material_ice_ridge"]
+albedo_color = Color(0.66, 0.74, 0.82, 1)
+
+[sub_resource type="StandardMaterial3D" id="Material_pod"]
+albedo_color = Color(0.55, 0.6, 0.62, 1)
+metallic = 0.5
+
+[sub_resource type="StandardMaterial3D" id="Material_ice"]
+transparency = 1
+albedo_color = Color(0.6, 0.8, 1, 0.45)
+
+[sub_resource type="StandardMaterial3D" id="Material_subject_body"]
+albedo_color = Color(0.78, 0.8, 0.82, 1)
+
+[sub_resource type="StandardMaterial3D" id="Material_frame"]
+albedo_color = Color(0.18, 0.19, 0.2, 1)
+
+[sub_resource type="StandardMaterial3D" id="Material_flake"]
+shading_mode = 0
+albedo_color = Color(0.95, 0.97, 1, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_pod"]
+size = Vector3(1.6, 2.4, 1.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_ice"]
+size = Vector3(2.4, 0.9, 1.2)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_body"]
+radius = 0.35
+height = 1.8
+
+[sub_resource type="BoxMesh" id="BoxMesh_square_frame"]
+size = Vector3(1.05, 1.05, 0.1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_frame"]
+size = Vector3(1.3, 0.85, 0.1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_flake"]
+radius = 0.04
+height = 0.08
+radial_segments = 4
+rings = 2
+
+[sub_resource type="BoxShape3D" id="Box_0"]
+size = Vector3(54, 3, 60)
+
+[sub_resource type="BoxShape3D" id="Box_1"]
+size = Vector3(9, 3, 3)
+
+[sub_resource type="BoxShape3D" id="Box_2"]
+size = Vector3(12, 3, 12)
+
+[sub_resource type="SphereShape3D" id="Sphere_3"]
+radius = 2.2
+
+[sub_resource type="BoxShape3D" id="Box_4"]
+size = Vector3(1.6, 2, 1.2)
+
+[sub_resource type="BoxShape3D" id="Box_5"]
+size = Vector3(3, 1.5, 2.2)
+
+[sub_resource type="BoxShape3D" id="Box_6"]
+size = Vector3(3, 2, 3)
+
+[sub_resource type="BoxShape3D" id="Box_7"]
+size = Vector3(3, 2, 2)
+
+[sub_resource type="BoxShape3D" id="Box_8"]
+size = Vector3(2, 2, 3)
+
+[sub_resource type="BoxShape3D" id="Box_9"]
+size = Vector3(4, 2, 2)
+
+[sub_resource type="BoxShape3D" id="Box_10"]
+size = Vector3(20, 2, 10)
+
+[sub_resource type="BoxShape3D" id="Box_11"]
+size = Vector3(4.5, 2, 4)
+
+[node name="Chapter1" type="Node3D"]
+script = ExtResource("1_r")
+chapter_title = "Chapter 1: Intake"
+intro_lines = Array[String](["intro", "perimeter", "whiteout", "returning", "skipper_welcome"])
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_facility")
+
+[node name="Facility" type="CSGCombiner3D" parent="."]
+use_collision = true
+
+[node name="Shell" type="CSGBox3D" parent="Facility"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 1, -10.5)
+size = Vector3(53, 3, 51)
+material = SubResource("Material_wall")
+
+[node name="Cell" type="CSGBox3D" parent="Facility"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.0, 2.5, 10.0)
+operation = 2
+size = Vector3(8, 5, 8)
+material = SubResource("Material_floor")
+
+[node name="Storage" type="CSGBox3D" parent="Facility"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21.0, 2.5, -7.0)
+operation = 2
+size = Vector3(10, 5, 10)
+material = SubResource("Material_floor")
+
+[node name="BlindRoom" type="CSGBox3D" parent="Facility"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.0, 2.5, -7.0)
+operation = 2
+size = Vector3(10, 5, 10)
+material = SubResource("Material_floor")
+
+[node name="Observation" type="CSGBox3D" parent="Facility"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0, 2.5, -25.0)
+operation = 2
+size = Vector3(20, 5, 10)
+material = SubResource("Material_floor")
+
+[node name="Elevator" type="CSGBox3D" parent="Facility"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0, 2.5, -32.75)
+operation = 2
+size = Vector3(5.0, 5, 4.5)
+material = SubResource("Material_floor")
+
+[node name="Survival" type="CSGBox3D" parent="Facility"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.0, 2.5, -10.0)
+operation = 2
+size = Vector3(12, 5, 12)
+material = SubResource("Material_floor")
+
+[node name="EastHall" type="CSGBox3D" parent="Facility"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.0, 2.5, 4.0)
+operation = 2
+size = Vector3(12, 5, 12)
+material = SubResource("Material_floor")
+
+[node name="CellCorridor" type="CSGBox3D" parent="Facility"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20.0, 2.5, 2.0)
+operation = 2
+size = Vector3(3.0, 5, 9.0)
+material = SubResource("Material_floor")
+
+[node name="StorageCorridor" type="CSGBox3D" parent="Facility"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14.5, 2.5, -7.0)
+operation = 2
+size = Vector3(4.0, 5, 3.0)
+material = SubResource("Material_floor")
+
+[node name="BlindCorridor" type="CSGBox3D" parent="Facility"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.0, 2.5, -16.0)
+operation = 2
+size = Vector3(3.0, 5, 9.0)
+material = SubResource("Material_floor")
+
+[node name="FrozenCorridor" type="CSGBox3D" parent="Facility"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.0, 2.5, -18.0)
+operation = 2
+size = Vector3(3.0, 5, 5.0)
+material = SubResource("Material_floor")
+
+[node name="EastCorridor" type="CSGBox3D" parent="Facility"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.0, 2.5, -3.0)
+operation = 2
+size = Vector3(3.0, 5, 3.0)
+material = SubResource("Material_floor")
+
+[node name="Airlock" type="CSGBox3D" parent="Facility"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.0, 2.5, 4.5)
+operation = 2
+size = Vector3(9.0, 5, 3)
+material = SubResource("Material_floor")
+
+[node name="ElevatorDoorway" type="CSGBox3D" parent="Facility"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0, 2.5, -30.25)
+operation = 2
+size = Vector3(3.0, 5, 1.5)
+material = SubResource("Material_floor")
+
+[node name="Block1" type="CSGBox3D" parent="Facility"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.5, 1.25, -7)
+size = Vector3(1.4, 2.5, 1.4)
+material = SubResource("Material_block")
+
+[node name="Block2" type="CSGBox3D" parent="Facility"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.5, 1.25, -7)
+size = Vector3(1.4, 2.5, 1.4)
+material = SubResource("Material_block")
+
+[node name="Block3" type="CSGBox3D" parent="Facility"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 1.25, -7)
+size = Vector3(1.4, 2.5, 1.4)
+material = SubResource("Material_block")
+
+[node name="Block4" type="CSGBox3D" parent="Facility"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.5, 1.25, -7)
+size = Vector3(1.4, 2.5, 1.4)
+material = SubResource("Material_block")
+
+[node name="Snowfield" type="CSGCombiner3D" parent="."]
+use_collision = true
+
+[node name="Snow" type="CSGBox3D" parent="Snowfield"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 53, -0.5, 0)
+size = Vector3(54, 1, 60)
+material = SubResource("Material_snow")
+
+[node name="Ridge1" type="CSGBox3D" parent="Snowfield"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 67.0, 1.25, -21.0)
+size = Vector3(1.5, 2.5, 18)
+material = SubResource("Material_ice_ridge")
+
+[node name="Ridge2" type="CSGBox3D" parent="Snowfield"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 67.0, 1.25, 11.0)
+size = Vector3(1.5, 2.5, 38)
+material = SubResource("Material_ice_ridge")
+
+[node name="Ridge3" type="CSGBox3D" parent="Snowfield"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 58.0, 1.25, -16.75)
+size = Vector3(1.5, 2.5, 26.5)
+material = SubResource("Material_ice_ridge")
+
+[node name="Ridge4" type="CSGBox3D" parent="Snowfield"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 58.0, 1.25, 15.25)
+size = Vector3(1.5, 2.5, 29.5)
+material = SubResource("Material_ice_ridge")
+
+[node name="Ridge5" type="CSGBox3D" parent="Snowfield"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 49.0, 1.25, -12.5)
+size = Vector3(1.5, 2.5, 35)
+material = SubResource("Material_ice_ridge")
+
+[node name="Ridge6" type="CSGBox3D" parent="Snowfield"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 49.0, 1.25, 19.5)
+size = Vector3(1.5, 2.5, 21)
+material = SubResource("Material_ice_ridge")
+
+[node name="Ridge7" type="CSGBox3D" parent="Snowfield"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40.0, 1.25, -14.5)
+size = Vector3(1.5, 2.5, 31)
+material = SubResource("Material_ice_ridge")
+
+[node name="Ridge8" type="CSGBox3D" parent="Snowfield"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40.0, 1.25, 17.5)
+size = Vector3(1.5, 2.5, 25)
+material = SubResource("Material_ice_ridge")
+
+[node name="Drift9" type="CSGBox3D" parent="Snowfield"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 53.0, 1.25, -30.75)
+size = Vector3(54, 2.5, 1.5)
+material = SubResource("Material_ice_ridge")
+
+[node name="Drift10" type="CSGBox3D" parent="Snowfield"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 53.0, 1.25, 30.75)
+size = Vector3(54, 2.5, 1.5)
+material = SubResource("Material_ice_ridge")
+
+[node name="Drift11" type="CSGBox3D" parent="Snowfield"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80.75, 1.25, 0.0)
+size = Vector3(1.5, 2.5, 63.0)
+material = SubResource("Material_ice_ridge")
+
+[node name="Drift12" type="CSGBox3D" parent="Snowfield"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25.25, 1.25, 23.25)
+size = Vector3(1.5, 2.5, 16.5)
+material = SubResource("Material_ice_ridge")
+
+[node name="Lights" type="Node3D" parent="."]
+
+[node name="Cell" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 2.4, 10)
+light_color = Color(0.75, 0.85, 1, 1)
+light_energy = 1.0
+omni_range = 9
+shadow_enabled = true
+
+[node name="Storage" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, 2.4, -7)
+light_color = Color(0.9, 0.85, 0.7, 1)
+light_energy = 1.1
+omni_range = 10
+shadow_enabled = true
+
+[node name="BlindRoom" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 2.4, -7)
+light_color = Color(1, 0.35, 0.3, 1)
+light_energy = 1.0
+omni_range = 9
+shadow_enabled = true
+
+[node name="ObservationWest" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 2.4, -25)
+light_color = Color(0.5, 0.9, 0.85, 1)
+light_energy = 1.0
+omni_range = 10
+shadow_enabled = true
+
+[node name="ObservationEast" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 2.4, -25)
+light_color = Color(0.5, 0.9, 0.85, 1)
+light_energy = 1.0
+omni_range = 10
+
+[node name="Elevator" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, -32.5)
+light_color = Color(1, 0.8, 0.5, 1)
+light_energy = 0.8
+omni_range = 5
+
+[node name="EastHallEmergency" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 2.4, 4)
+light_color = Color(1, 0.15, 0.1, 1)
+light_energy = 0.4
+omni_range = 10
+
+[node name="EastHallPower" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 2.4, 4)
+light_color = Color(0.85, 0.9, 1, 1)
+light_energy = 1.6
+omni_range = 11
+shadow_enabled = true
+script = ExtResource("13_r")
+
+[node name="Survival" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 2.4, -10)
+light_color = Color(0.7, 0.75, 0.9, 1)
+light_energy = 0.8
+omni_range = 10
+shadow_enabled = true
+
+[node name="Airlock" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21, 2.2, 4.5)
+light_color = Color(1, 0.6, 0.2, 1)
+light_energy = 0.8
+omni_range = 6
+
+[node name="Doors" type="Node3D" parent="."]
+
+[node name="CellDoor" parent="Doors" instance=ExtResource("4_r")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -20, 1.25, 5.5)
+
+[node name="EastHallDoor" parent="Doors" instance=ExtResource("4_r")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 15, 1.25, -3)
+
+[node name="FrozenDoor" parent="Doors" instance=ExtResource("4_r")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 8, 1.25, -18)
+
+[node name="BlindDoor" parent="Doors" instance=ExtResource("4_r")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -8, 1.25, -14)
+
+[node name="AirlockDoor" parent="Doors" instance=ExtResource("4_r")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.5, 1.25, 4.5)
+start_open = true
+
+[node name="ElevatorDoor" parent="Doors" instance=ExtResource("4_r")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 1.25, -30.25)
+
+[node name="Zones" type="Node3D" parent="."]
+
+[node name="Outside" type="Area3D" parent="Zones"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 53, 1.5, 0)
+script = ExtResource("11_r")
+warmth_rate = -1.4
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/Outside"]
+shape = SubResource("Box_0")
+
+[node name="Whiteout" type="Area3D" parent="Zones"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 53, 1.5, 0)
+script = ExtResource("20_r")
+environment = SubResource("Environment_whiteout")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/Whiteout"]
+shape = SubResource("Box_0")
+
+[node name="Airlock" type="Area3D" parent="Zones"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 1.5, 4.5)
+script = ExtResource("11_r")
+warmth_rate = -2.5
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/Airlock"]
+shape = SubResource("Box_1")
+
+[node name="EastHallCold" type="Area3D" parent="Zones"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 1.5, 4)
+script = ExtResource("11_r")
+warmth_rate = -1.5
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/EastHallCold"]
+shape = SubResource("Box_2")
+
+[node name="EastHallHeat" type="Area3D" parent="Zones"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 1.5, 4)
+script = ExtResource("11_r")
+warmth_rate = 6.0
+active = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/EastHallHeat"]
+shape = SubResource("Box_2")
+
+[node name="EastHallSpaceHeater" type="Area3D" parent="Zones"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 1.5, 8.8)
+script = ExtResource("11_r")
+warmth_rate = 8.0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/EastHallSpaceHeater"]
+shape = SubResource("Sphere_3")
+
+[node name="SurvivalCold" type="Area3D" parent="Zones"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 1.5, -10)
+script = ExtResource("11_r")
+warmth_rate = -1.0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/SurvivalCold"]
+shape = SubResource("Box_2")
+
+[node name="Perimeter" type="Node3D" parent="."]
+
+[node name="Post0" type="Node3D" parent="Perimeter"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 70, 0, -16)
+script = ExtResource("17_r")
+symbol = 0
+
+[node name="Post1" type="Node3D" parent="Perimeter"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 62, 0, -21)
+script = ExtResource("17_r")
+symbol = 1
+
+[node name="Post2" type="Node3D" parent="Perimeter"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 63, 0, -9)
+script = ExtResource("17_r")
+symbol = 2
+
+[node name="Post3" type="Node3D" parent="Perimeter"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 54, 0, -13)
+script = ExtResource("17_r")
+symbol = 3
+
+[node name="Post4" type="Node3D" parent="Perimeter"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 0, -1)
+script = ExtResource("17_r")
+symbol = 4
+
+[node name="Post5" type="Node3D" parent="Perimeter"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 46, 0, -5)
+script = ExtResource("17_r")
+symbol = 5
+
+[node name="Post6" type="Node3D" parent="Perimeter"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44, 0, 7)
+script = ExtResource("17_r")
+symbol = 6
+
+[node name="Post7" type="Node3D" parent="Perimeter"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35, 0, 3)
+script = ExtResource("17_r")
+symbol = 7
+
+[node name="PerimeterKeypad" parent="." instance=ExtResource("2_r")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -26, 0, 10.5)
+screen_text = "PERIMETER LIGHTS"
+prompt = "Use light switchboard"
+
+[node name="PerimeterNetwork" type="Node" parent="." node_paths=PackedStringArray("keypad", "lamps")]
+script = ExtResource("18_r")
+keypad = NodePath("../PerimeterKeypad")
+lamps = [NodePath("../Perimeter/Post0"), NodePath("../Perimeter/Post1"), NodePath("../Perimeter/Post2"), NodePath("../Perimeter/Post3"), NodePath("../Perimeter/Post4"), NodePath("../Perimeter/Post5"), NodePath("../Perimeter/Post6"), NodePath("../Perimeter/Post7")]
+
+[node name="PerimeterScreen" type="Area3D" parent="." node_paths=PackedStringArray("view_point")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -26, 0, 8)
+script = ExtResource("15_r")
+prompt = "Read perimeter map"
+view_point = NodePath("ViewPoint")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PerimeterScreen"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0.6)
+shape = SubResource("Box_4")
+
+[node name="Frame" type="MeshInstance3D" parent="PerimeterScreen"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0.04)
+mesh = SubResource("BoxMesh_square_frame")
+surface_material_override/0 = SubResource("Material_frame")
+
+[node name="Map" type="Node3D" parent="PerimeterScreen" node_paths=PackedStringArray("network")]
+script = ExtResource("19_r")
+network = NodePath("../../PerimeterNetwork")
+walls = Array[Rect2]([Rect2(66.25, -30, 1.5, 18), Rect2(66.25, -8, 1.5, 38), Rect2(57.25, -30, 1.5, 26.5), Rect2(57.25, 0.5, 1.5, 29.5), Rect2(48.25, -30, 1.5, 35), Rect2(48.25, 9, 1.5, 21), Rect2(39.25, -30, 1.5, 31), Rect2(39.25, 5, 1.5, 25), Rect2(26, -31.5, 54, 1.5), Rect2(26, 30, 54, 1.5), Rect2(80, -31.5, 1.5, 63.0), Rect2(24.5, 15, 1.5, 16.5)])
+
+[node name="ViewPoint" type="Marker3D" parent="PerimeterScreen"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 1.15)
+
+[node name="CellMonitor" parent="." instance=ExtResource("3_r")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24.5, 0, 6)
+
+[node name="PowerKeypad" parent="." instance=ExtResource("2_r")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, -2)
+
+[node name="PowerPuzzle" type="Node" parent="." node_paths=PackedStringArray("keypad", "display", "doors", "activate")]
+script = ExtResource("5_r")
+keypad = NodePath("../PowerKeypad")
+display = NodePath("../CellMonitor")
+doors = [NodePath("../Doors/CellDoor"), NodePath("../Doors/EastHallDoor")]
+activate = [NodePath("../Lights/EastHallPower"), NodePath("../Zones/EastHallHeat")]
+solved_lines = Array[String](["power_restored"])
+
+[node name="WallCode" type="Node3D" parent="."]
+script = ExtResource("14_r")
+
+[node name="Slot1" type="Marker3D" parent="WallCode"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.5, 2.52, -7)
+
+[node name="Slot2" type="Marker3D" parent="WallCode"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.5, 2.52, -7)
+
+[node name="Slot3" type="Marker3D" parent="WallCode"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2.52, -7)
+
+[node name="Slot4" type="Marker3D" parent="WallCode"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.5, 2.52, -7)
+
+[node name="BlindKeypad" parent="." instance=ExtResource("2_r")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.5, 0, -12)
+screen_text = "ENTER WHAT YOU CANNOT SEE"
+
+[node name="BlindPuzzle" type="Node" parent="." node_paths=PackedStringArray("keypad", "display", "doors")]
+script = ExtResource("5_r")
+keypad = NodePath("../BlindKeypad")
+display = NodePath("../WallCode")
+doors = [NodePath("../Doors/BlindDoor")]
+solved_lines = Array[String](["p3_solved"])
+
+[node name="Heater" parent="." node_paths=PackedStringArray("doors") instance=ExtResource("12_r")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11, 0, -16)
+doors = [NodePath("../Doors/FrozenDoor")]
+on_lines = Array[String](["heater_on"])
+
+[node name="TubeSubject" parent="." node_paths=PackedStringArray("partner") instance=ExtResource("6_r")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 0, -12)
+partner = NodePath("../TubeVisitor")
+
+[node name="TubeVisitor" parent="." node_paths=PackedStringArray("partner") instance=ExtResource("6_r")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 18, 0, -4)
+partner = NodePath("../TubeSubject")
+
+[node name="SaveStorage" parent="." instance=ExtResource("7_r")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0, -12)
+
+[node name="SaveEastHall" parent="." instance=ExtResource("7_r")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 16, 0, 10)
+
+[node name="SaveSurvival" parent="." instance=ExtResource("7_r")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 10, 0, -4)
+
+[node name="Pod" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 1.2, 13.2)
+mesh = SubResource("BoxMesh_pod")
+surface_material_override/0 = SubResource("Material_pod")
+
+[node name="PodView" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 1.6, 13.2)
+
+[node name="AirlockView" type="Marker3D" parent="."]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 21.5, 1.6, 4.5)
+
+[node name="ElevatorView" type="Marker3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 1.6, -34.3)
+
+[node name="FrozenBody" type="Area3D" parent="." node_paths=PackedStringArray("view_point")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, -26)
+script = ExtResource("15_r")
+prompt = "Examine"
+view_point = NodePath("ViewPoint")
+line_id = "frozen_body"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="FrozenBody"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("Box_5")
+
+[node name="Ice" type="MeshInstance3D" parent="FrozenBody"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+mesh = SubResource("BoxMesh_ice")
+surface_material_override/0 = SubResource("Material_ice")
+
+[node name="Body" type="MeshInstance3D" parent="FrozenBody"]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0.45, 0)
+mesh = SubResource("CapsuleMesh_body")
+surface_material_override/0 = SubResource("Material_subject_body")
+
+[node name="ViewPoint" type="Marker3D" parent="FrozenBody"]
+transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 1.7, 1.5)
+
+[node name="MapScreen" type="Area3D" parent="." node_paths=PackedStringArray("view_point")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, -30)
+script = ExtResource("15_r")
+prompt = "Look at the monitor"
+view_point = NodePath("ViewPoint")
+line_id = "map_monitor"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MapScreen"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0.6)
+shape = SubResource("Box_4")
+
+[node name="Frame" type="MeshInstance3D" parent="MapScreen"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0.04)
+mesh = SubResource("BoxMesh_frame")
+surface_material_override/0 = SubResource("Material_frame")
+
+[node name="Map" type="Node3D" parent="MapScreen"]
+script = ExtResource("16_r")
+rooms = Array[Rect2]([Rect2(-26, 6, 8, 8), Rect2(-26, -12, 10, 10), Rect2(-13, -12, 10, 10), Rect2(-10, -30, 20, 10), Rect2(-2.5, -35, 5.0, 4.5), Rect2(8, -16, 12, 12), Rect2(6, -2, 12, 12), Rect2(-21.5, -2.5, 3.0, 9.0), Rect2(-16.5, -8.5, 4.0, 3.0), Rect2(-9.5, -20.5, 3.0, 9.0), Rect2(6.5, -20.5, 3.0, 5.0), Rect2(13.5, -4.5, 3.0, 3.0), Rect2(17.5, 3, 9.0, 3), Rect2(-1.5, -31, 3.0, 1.5)])
+
+[node name="ViewPoint" type="Marker3D" parent="MapScreen"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 1.3)
+
+[node name="Snowfall" type="CPUParticles3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 53, 9, 0)
+amount = 1500
+lifetime = 3.0
+mesh = SubResource("SphereMesh_flake")
+material_override = SubResource("Material_flake")
+emission_shape = 3
+emission_box_extents = Vector3(27, 1, 30)
+direction = Vector3(-1, -1, 0)
+spread = 15.0
+gravity = Vector3(-3, -4, 0)
+initial_velocity_min = 1.0
+initial_velocity_max = 3.0
+
+[node name="Story" type="Node3D" parent="."]
+
+[node name="Wake" type="Area3D" parent="Story" node_paths=PackedStringArray("cutaway")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 1, 12.6)
+script = ExtResource("10_r")
+line_ids = Array[String]([])
+who = 2
+cutaway = NodePath("../../PodView")
+cutaway_time = 3.5
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Story/Wake"]
+shape = SubResource("Box_6")
+
+[node name="CellMonitor" type="Area3D" parent="Story"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24.5, 1, 7.5)
+script = ExtResource("10_r")
+line_ids = Array[String](["cell_monitor"])
+who = 2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Story/CellMonitor"]
+shape = SubResource("Box_7")
+
+[node name="AirlockSeal" type="Area3D" parent="Story" node_paths=PackedStringArray("cutaway", "close_doors")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.5, 1, 4.5)
+script = ExtResource("10_r")
+line_ids = Array[String](["airlock_sealed"])
+who = 3
+cutaway = NodePath("../../AirlockView")
+cutaway_time = 2.5
+close_doors = [NodePath("../../Doors/AirlockDoor")]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Story/AirlockSeal"]
+shape = SubResource("Box_8")
+
+[node name="PowerKeypad" type="Area3D" parent="Story"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 1, -0.5)
+script = ExtResource("10_r")
+line_ids = Array[String](["keypad1"])
+who = 3
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Story/PowerKeypad"]
+shape = SubResource("Box_7")
+
+[node name="SurvivalEntry" type="Area3D" parent="Story"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 1, -6)
+script = ExtResource("10_r")
+line_ids = Array[String](["survival_enemy"])
+who = 3
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Story/SurvivalEntry"]
+shape = SubResource("Box_7")
+
+[node name="FrozenDoor" type="Area3D" parent="Story"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 1, -14.5)
+script = ExtResource("10_r")
+line_ids = Array[String](["frozen_door"])
+who = 3
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Story/FrozenDoor"]
+shape = SubResource("Box_9")
+
+[node name="Storage" type="Area3D" parent="Story"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 1, -3.5)
+script = ExtResource("10_r")
+line_ids = Array[String](["storage"])
+who = 2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Story/Storage"]
+shape = SubResource("Box_7")
+
+[node name="BlindRoom" type="Area3D" parent="Story"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.5, 1, -7)
+script = ExtResource("10_r")
+line_ids = Array[String](["p3_room"])
+who = 2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Story/BlindRoom"]
+shape = SubResource("Box_8")
+
+[node name="Reunion" type="Area3D" parent="Story" node_paths=PackedStringArray("open_doors")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -25)
+script = ExtResource("10_r")
+line_ids = Array[String](["reunion", "radio_unused"])
+who = 1
+look_at_partner = true
+cutaway_time = 3.0
+open_doors = [NodePath("../../Doors/ElevatorDoor")]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Story/Reunion"]
+shape = SubResource("Box_10")
+
+[node name="ElevatorRide" type="Area3D" parent="Story" node_paths=PackedStringArray("cutaway", "close_doors")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -32.75)
+script = ExtResource("10_r")
+line_ids = Array[String](["elevator"])
+who = 1
+cutaway = NodePath("../../ElevatorView")
+cutaway_time = 5.0
+close_doors = [NodePath("../../Doors/ElevatorDoor")]
+ends_chapter = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Story/ElevatorRide"]
+shape = SubResource("Box_11")
+
+[node name="Placements" type="Node3D" parent="."]
+process_mode = 4
+
+[node name="Pistol" parent="Placements" instance=ExtResource("8_r")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, 7)
+item_id = "pistol"
+count = 1
+
+[node name="AmmoEastHall" parent="Placements" instance=ExtResource("8_r")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0, 8)
+item_id = "ammo"
+count = 6
+
+[node name="HeatCell" parent="Placements" instance=ExtResource("8_r")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, -9)
+item_id = "heat_cell"
+count = 1
+
+[node name="Medkit" parent="Placements" instance=ExtResource("8_r")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17.5, 0, -9.5)
+item_id = "medkit"
+count = 1
+
+[node name="AmmoStorage" parent="Placements" instance=ExtResource("8_r")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 0, -4)
+item_id = "ammo"
+count = 6
+
+[node name="AmmoSurvival" parent="Placements" instance=ExtResource("8_r")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19, 0, -14)
+item_id = "ammo"
+count = 4
+
+[node name="Unit7" parent="Placements" instance=ExtResource("9_r")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11, 0, -12)
+
+[node name="World" type="Node3D" parent="."]
+
+[node name="WorldSpawner" type="MultiplayerSpawner" parent="."]
+spawn_path = NodePath("../World")
+
+[node name="SpawnPoints" type="Node3D" parent="."]
+
+[node name="Subject" type="Marker3D" parent="SpawnPoints"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 0.1, 13.2)
+
+[node name="Visitor" type="Marker3D" parent="SpawnPoints"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 74, 0.1, -22)
+
+[node name="Players" type="Node3D" parent="."]
+
+[node name="PlayerSpawner" type="MultiplayerSpawner" parent="."]
+spawn_path = NodePath("../Players")

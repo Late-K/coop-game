@@ -24,6 +24,15 @@ func _init() -> void:
 	input_ray_pickable = false
 
 
+## Where the player stands to use this: the centre of its reach shape. Used to pick the
+## nearest interactable; the node's own origin is often inside a wall.
+func interaction_point() -> Vector3:
+	for child in get_children():
+		if child is CollisionShape3D:
+			return child.global_position
+	return global_position
+
+
 ## Text after "[E]" in the prompt. Override for prompts that depend on the player.
 func get_prompt(_player: Player) -> String:
 	return prompt

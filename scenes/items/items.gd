@@ -5,6 +5,7 @@ const DEFS := {
 	"pistol": {"name": "Pistol", "max_stack": 1, "color": Color(0.3, 0.3, 0.34)},
 	"ammo": {"name": "Pistol rounds", "max_stack": 12, "color": Color(0.85, 0.7, 0.25)},
 	"medkit": {"name": "Med kit", "max_stack": 2, "color": Color(0.8, 0.15, 0.15), "heal": 50},
+	"heat_cell": {"name": "Heat cell", "max_stack": 1, "color": Color(1.0, 0.45, 0.1)},
 }
 
 

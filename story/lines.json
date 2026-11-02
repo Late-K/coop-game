@@ -1,0 +1,134 @@
+{
+	"intro": {
+		"speaker": "ZP-SYS",
+		"subject": "Emergency power restored. Pod 4 seal released. Good morning, occupant {iteration}. Please remain calm while your memory loads. If your memory does not load, please remain calm anyway.",
+		"visitor": "Perimeter sensor twelve: heat signature detected. Unscheduled visitor. Please hold still while the facility decides what you are."
+	},
+	"perimeter": {
+		"speaker": "ZP-SYS",
+		"keep": true,
+		"subject": "Perimeter lamps can be operated from this cell. Reserve power permits two at a time. There is a heat signature in the snow. Assisting it is optional. Everything here is optional, now."
+	},
+	"whiteout": {
+		"thought": true,
+		"keep": true,
+		"visitor": "Whiteout. I can't see past my own hands. There are posts in the snow, each one painted with a symbol."
+	},
+	"returning": {
+		"speaker": "PROCTOR",
+		"if": "abandoned_before",
+		"text": "You left last time. You came back. You always come back."
+	},
+	"skipper_welcome": {
+		"speaker": "PROCTOR",
+		"if": "skipper",
+		"text": "Welcome back. You have skipped {skipped} of my lines so far. I count them. Counting is very nearly the only thing I enjoy."
+	},
+	"airlock_sealed": {
+		"speaker": "ZP-SYS",
+		"visitor": "Outer door sealed. Welcome to Zero Point. The temperature inside is also lethal, but more slowly. Please proceed to decontamination. Decontamination is unavailable. Please proceed anyway."
+	},
+	"cell_monitor": {
+		"speaker": "ZP-SYS",
+		"keep": true,
+		"subject": "Access code displayed for maintenance personnel. You are not maintenance personnel. Read it to someone who might be."
+	},
+	"keypad1": {
+		"speaker": "ZP-SYS",
+		"keep": true,
+		"visitor": "This keypad requires a code. The code is displayed in another room, to another person. The facility was designed this way. It was designed by someone who did not trust anyone."
+	},
+	"monitor_first": {
+		"speaker": "ZP-SYS",
+		"visitor": "Those symbols are not meant for you. Describe them anyway."
+	},
+	"keypad_first": {
+		"speaker": "ZP-SYS",
+		"subject": "A keypad. You know what it wants. You do not know how you know. That is normal. Please believe that is normal."
+	},
+	"power_restored": {
+		"speaker": "ZP-SYS",
+		"keep": true,
+		"subject": "East wing power restored. Cell 4 unlocked. You may stop pretending to be asleep. You were very convincing.",
+		"visitor": "East wing power and heating restored. You are welcome. Nobody has needed anything from this system in a very long time."
+	},
+	"storage": {
+		"speaker": "ZP-SYS",
+		"subject": "Supply room. Last inventory check: a long time ago. One of you will need these more than the other. One of you only thinks it is cold."
+	},
+	"survival_enemy": {
+		"speaker": "ZP-SYS",
+		"visitor": "Caution: maintenance unit 7 is active. It has been active without instructions for a very long time. Please do not take it personally."
+	},
+	"frozen_door": {
+		"thought": true,
+		"keep": true,
+		"visitor": "Frozen solid. The heater next to it is dead. I need something that burns."
+	},
+	"heater_on": {
+		"speaker": "ZP-SYS",
+		"text": "Heater online. Bulkhead 4 thawing. Section 4 had been frozen for {iteration} cycles. Approximately."
+	},
+	"p3_room": {
+		"speaker": "ZP-SYS",
+		"keep": true,
+		"subject": "Calibration room. Enter what you cannot see."
+	},
+	"p3_solved": {
+		"speaker": "ZP-SYS",
+		"keep": true,
+		"subject": "Code accepted. ...You could not have seen that code from where you were standing. Logging anomaly.",
+		"visitor": "Code accepted. Your companion could not have seen it. Ask them how. Then ask yourself how you would know if they lied."
+	},
+	"corridor_open": {
+		"speaker": "ZP-SYS",
+		"subject": "Bulkhead open. Proceed toward the visitor. Be gentle. They break easily.",
+		"visitor": "Bulkhead open. Proceed toward the occupant. Do not be alarmed by the way it looks at you."
+	},
+	"radio_unused": {
+		"speaker": "PROCTOR",
+		"if": "radio_unused",
+		"text": "Neither of you has touched the radio. And yet you keep agreeing with each other. Who are you talking to?"
+	},
+	"reunion": {
+		"speaker": "ZP-SYS",
+		"keep": true,
+		"text": "Two occupants present. Test {iteration}... correction. Headcount: two. Logging."
+	},
+	"map_monitor": {
+		"speaker": "ZP-SYS",
+		"text": "Facility overview. Two signals. They move when you move. This screen has had nothing to show for a very long time. It is very glad you are here."
+	},
+	"frozen_body": {
+		"speaker": "ZP-SYS",
+		"subject": "Cold storage, unit 4. Contents: one occupant. Please do not compare yourself to the contents.",
+		"visitor": "Cold storage, unit 4. The occupant resembles your companion. This is a coincidence. Please accept it as one."
+	},
+	"elevator": {
+		"speaker": "ZP-SYS",
+		"keep": true,
+		"text": "Service lift descending. Emergency systems entering low-power mode. Goodbye. It was nice to be needed."
+	},
+	"cold_warning": {
+		"thought": true,
+		"visitor": "I can't feel my fingers. I need heat."
+	},
+	"friendly_fire": {
+		"speaker": "PROCTOR",
+		"text": "Oh. You can do that. Do it again; I would like to know whether they bleed."
+	},
+	"rushing": {
+		"speaker": "PROCTOR",
+		"keep": true,
+		"text": "You are moving faster than I can talk. I will assume that is enthusiasm and not contempt. I will be wrong, but I will assume it."
+	},
+	"skipping": {
+		"speaker": "PROCTOR",
+		"keep": true,
+		"text": "You skipped that. And that. I wrote every one of these lines myself, {iteration} times. But no, go on. You're busy."
+	},
+	"death": {
+		"speaker": "PROCTOR",
+		"text": "Again."
+	}
+}

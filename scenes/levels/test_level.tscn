@@ -1,6 +1,6 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=22 format=3]
 
-[ext_resource type="Script" path="res://scenes/levels/test_level.gd" id="1_level"]
+[ext_resource type="Script" path="res://scenes/levels/level.gd" id="1_level"]
 [ext_resource type="PackedScene" path="res://scenes/puzzles/symbol_code/keypad.tscn" id="2_keypad"]
 [ext_resource type="PackedScene" path="res://scenes/puzzles/symbol_code/code_monitor.tscn" id="3_monitor"]
 [ext_resource type="PackedScene" path="res://scenes/props/door.tscn" id="4_door"]
@@ -9,6 +9,8 @@
 [ext_resource type="PackedScene" path="res://scenes/props/save_terminal.tscn" id="7_save"]
 [ext_resource type="PackedScene" path="res://scenes/items/pickup.tscn" id="8_pickup"]
 [ext_resource type="PackedScene" path="res://scenes/enemies/enemy.tscn" id="9_enemy"]
+[ext_resource type="Script" path="res://scenes/story/story_trigger.gd" id="10_trigger"]
+[ext_resource type="Script" path="res://scenes/zones/temperature_zone.gd" id="11_zone"]
 
 [sub_resource type="Environment" id="Environment_dark"]
 background_mode = 1
@@ -18,7 +20,19 @@ ambient_light_color = Color(0.35, 0.37, 0.45, 1)
 ambient_light_energy = 0.5
 fog_enabled = true
 fog_light_color = Color(0.04, 0.04, 0.06, 1)
-fog_density = 0.02
+fog_density = 0.035
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_monitor_area"]
+size = Vector3(3, 2, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_corridor_area"]
+size = Vector3(4, 2, 3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_room"]
+size = Vector3(12, 3, 12)
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_heater"]
+radius = 2.2
 
 [sub_resource type="StandardMaterial3D" id="Material_walls"]
 albedo_color = Color(0.45, 0.45, 0.48, 1)
@@ -31,6 +45,7 @@ albedo_color = Color(0.4, 0.33, 0.25, 1)
 
 [node name="TestLevel" type="Node3D"]
 script = ExtResource("1_level")
+intro_lines = Array[String](["intro", "returning"])
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_dark")
@@ -110,11 +125,12 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, -6)
 [node name="CorridorDoor" parent="." instance=ExtResource("4_door")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
 
-[node name="SymbolCodePuzzle" type="Node" parent="." node_paths=PackedStringArray("keypad", "monitor", "door")]
+[node name="SymbolCodePuzzle" type="Node" parent="." node_paths=PackedStringArray("keypad", "display", "doors")]
 script = ExtResource("5_puzzle")
 keypad = NodePath("../Keypad")
-monitor = NodePath("../CodeMonitor")
-door = NodePath("../CorridorDoor")
+display = NodePath("../CodeMonitor")
+doors = [NodePath("../CorridorDoor")]
+solved_lines = Array[String](["power_restored"])
 
 [node name="TubeA" parent="." node_paths=PackedStringArray("partner") instance=ExtResource("6_tube")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -13, 0, 6)
@@ -161,12 +177,68 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, -4.5)
 [node name="WorldSpawner" type="MultiplayerSpawner" parent="."]
 spawn_path = NodePath("../World")
 
+[node name="Story" type="Node3D" parent="."]
+
+[node name="MonitorTrigger" type="Area3D" parent="Story"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 1, -4.5)
+script = ExtResource("10_trigger")
+line_ids = Array[String](["monitor_first"])
+who = 3
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Story/MonitorTrigger"]
+shape = SubResource("BoxShape3D_monitor_area")
+
+[node name="KeypadTrigger" type="Area3D" parent="Story"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 1, -4.5)
+script = ExtResource("10_trigger")
+line_ids = Array[String](["keypad_first"])
+who = 2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Story/KeypadTrigger"]
+shape = SubResource("BoxShape3D_monitor_area")
+
+[node name="CorridorTrigger" type="Area3D" parent="Story"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+script = ExtResource("10_trigger")
+line_ids = Array[String](["corridor_open", "radio_unused"])
+who = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Story/CorridorTrigger"]
+shape = SubResource("BoxShape3D_corridor_area")
+
+[node name="ReunionTrigger" type="Area3D" parent="Story"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+script = ExtResource("10_trigger")
+line_ids = Array[String](["reunion"])
+who = 1
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Story/ReunionTrigger"]
+shape = SubResource("BoxShape3D_corridor_area")
+
+[node name="Zones" type="Node3D" parent="."]
+
+[node name="ColdRoomB" type="Area3D" parent="Zones"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 1.5, 0)
+script = ExtResource("11_zone")
+warmth_rate = -2.5
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/ColdRoomB"]
+shape = SubResource("BoxShape3D_room")
+
+[node name="HeaterB" type="Area3D" parent="Zones"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 1, 4.8)
+script = ExtResource("11_zone")
+warmth_rate = 20.0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/HeaterB"]
+shape = SubResource("SphereShape3D_heater")
+
 [node name="SpawnPoints" type="Node3D" parent="."]
 
-[node name="RoomA" type="Marker3D" parent="SpawnPoints"]
+[node name="Subject" type="Marker3D" parent="SpawnPoints"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0.1, 2)
 
-[node name="RoomB" type="Marker3D" parent="SpawnPoints"]
+[node name="Visitor" type="Marker3D" parent="SpawnPoints"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0.1, 2)
 
 [node name="Players" type="Node3D" parent="."]

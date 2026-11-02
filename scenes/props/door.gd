@@ -1,14 +1,29 @@
 class_name Door
 extends AnimatableBody3D
 ## A sliding blast door that sinks into the floor when opened.
-## Pure presentation: whoever owns the logic (a puzzle, on the server) calls set_open on every peer.
+## Pure presentation: whoever owns the logic (a puzzle, on the server) calls set_open on
+## every peer, or `sync_open.rpc(...)` from the server.
 
 const OPEN_DROP := 2.6
 const MOVE_TIME := 1.2
 
+## Placed closed in the editor; starts sunk into the floor when true (e.g. an entrance).
+@export var start_open := false
+
 var is_open := false
 
 @onready var _closed_y := position.y
+
+
+func _ready() -> void:
+	if start_open:
+		is_open = true
+		position.y = _closed_y - OPEN_DROP
+
+
+@rpc("authority", "call_local", "reliable")
+func sync_open(open: bool) -> void:
+	set_open(open)
 
 
 func set_open(open: bool) -> void:

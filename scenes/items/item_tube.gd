@@ -1,7 +1,9 @@
 class_name ItemTube
 extends Interactable
 ## Pneumatic tube linking two separated rooms. Sends the player's selected
-## inventory slot to the partner tube, where it arrives as a pickup after a delay.
+## inventory slot to the partner tube, where it arrives as a pickup on the tray
+## beside it. The tray sits to the side on purpose: a pickup lying right in front
+## would be nearer than the tube and steal the interact key from it.
 ## Later: the noise could attract enemies, making every send a decision.
 
 const TRANSIT_TIME := 4.0

@@ -1,7 +1,7 @@
 class_name SymbolCodePuzzle
 extends Node
-## First cross-player puzzle: the code is shown on a monitor in one room and the
-## keypad that accepts it is in the other, so one player reads and the other enters.
+## Cross-player code puzzle: the code is shown somewhere (a monitor in the other room,
+## paint on top of walls...) and a keypad accepts it.
 ##
 ## The server owns all state (code, entry, solved) and pushes it to both peers;
 ## clients only ever send keypad presses.
@@ -9,8 +9,14 @@ extends Node
 const CODE_LENGTH := 4
 
 @export var keypad: Keypad
-@export var monitor: CodeMonitor
-@export var door: Door
+## Anything with show_code(code: PackedInt32Array): CodeMonitor, WallCodeDisplay...
+@export var display: Node3D
+## Opened while solved.
+@export var doors: Array[Door] = []
+## Switched on while solved: anything with set_active(bool) (PowerLight, TemperatureZone...).
+@export var activate: Array[Node] = []
+## Story lines played for both players when the code is accepted.
+@export var solved_lines: Array[String] = []
 
 var code := PackedInt32Array()
 var entered := PackedInt32Array()
@@ -20,23 +26,26 @@ var solved := false
 func _ready() -> void:
 	keypad.symbol_pressed.connect(_on_keypad_symbol_pressed)
 	if not multiplayer.is_server():
+		# Ask once our copy of the level exists; pushing from the server could arrive too early.
+		_request_state.rpc_id(1)
 		return
-	multiplayer.peer_connected.connect(_on_peer_connected)
 	for i in CODE_LENGTH:
 		code.append(randi() % Symbols.COUNT)
 	var names := PackedStringArray()
 	for symbol in code:
 		names.append(Symbols.NAMES[symbol])
 	print("[puzzle] code: %s" % ", ".join(names))
-	_broadcast_state()
+	_apply_state(code, entered, solved)
 
 
 func _on_keypad_symbol_pressed(symbol: int) -> void:
 	submit_symbol.rpc_id(1, symbol)
 
 
-func _on_peer_connected(id: int) -> void:
-	_apply_state.rpc_id(id, code, entered, solved)
+@rpc("any_peer", "reliable")
+func _request_state() -> void:
+	if multiplayer.is_server():
+		_apply_state.rpc_id(multiplayer.get_remote_sender_id(), code, entered, solved)
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -49,6 +58,8 @@ func submit_symbol(symbol: int) -> void:
 		if not solved:
 			entered = PackedInt32Array()
 		_play_feedback.rpc(solved)
+		if solved:
+			Story.play(solved_lines)
 	_broadcast_state()
 
 
@@ -61,9 +72,12 @@ func _apply_state(new_code: PackedInt32Array, new_entered: PackedInt32Array, new
 	code = new_code
 	entered = new_entered
 	solved = new_solved
-	monitor.show_code(code)
+	display.show_code(code)
 	keypad.show_entry(entered)
-	door.set_open(solved)
+	for door in doors:
+		door.set_open(solved)
+	for node in activate:
+		node.set_active(solved)
 
 
 @rpc("authority", "call_local", "reliable")

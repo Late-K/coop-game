@@ -9,6 +9,7 @@ const MESSAGE_TIME := 2.0
 var _prompt_label := Label.new()
 var _message_label := Label.new()
 var _health_bar := ProgressBar.new()
+var _temperature_label := Label.new()
 var _ammo_label := Label.new()
 var _slot_panels: Array[PanelContainer] = []
 var _slot_labels: Array[Label] = []
@@ -50,6 +51,8 @@ func _ready() -> void:
 	_health_bar.size_flags_vertical = SIZE_SHRINK_CENTER
 	_health_bar.show_percentage = false
 	bar.add_child(_health_bar)
+	_temperature_label.size_flags_vertical = SIZE_SHRINK_CENTER
+	bar.add_child(_temperature_label)
 	bar.add_child(_make_spacer())
 	for i in Inventory.SLOT_COUNT:
 		var panel := PanelContainer.new()
@@ -74,6 +77,9 @@ func _ready() -> void:
 func refresh(player: Player) -> void:
 	_health_bar.max_value = Player.MAX_HEALTH
 	_health_bar.value = player.health
+	var temperature := player.body_temperature()
+	_temperature_label.text = "%.1f °C" % temperature
+	_temperature_label.modulate = Color(0.55, 0.75, 1.0) if temperature < 33.0 else Color.WHITE
 	for i in Inventory.SLOT_COUNT:
 		var slot := player.inventory.slots[i]
 		var text := "%d" % (i + 1)

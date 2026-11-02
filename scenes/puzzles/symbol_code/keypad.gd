@@ -6,6 +6,9 @@ extends Interactable
 
 signal symbol_pressed(symbol: int)
 
+## Shown on the screen while nothing is entered (e.g. a riddle). Empty for none.
+@export var screen_text := ""
+
 const ENTRY_SLOTS := 4
 const COLUMNS := 4
 const BUTTON_SIZE := 0.14
@@ -19,6 +22,7 @@ const SCREEN_WRONG := Color(0.7, 0.1, 0.1)
 var _button_material := StandardMaterial3D.new()
 var _screen_material := StandardMaterial3D.new()
 var _entry_sprites: Array[Sprite3D] = []
+var _screen_label: Label3D
 
 @onready var screen: MeshInstance3D = $Screen
 @onready var buttons_root: Node3D = $Buttons
@@ -27,6 +31,7 @@ var _entry_sprites: Array[Sprite3D] = []
 func _ready() -> void:
 	_button_material.albedo_color = Color(0.2, 0.2, 0.22)
 	_screen_material.albedo_color = SCREEN_IDLE
+	_screen_material.set_meta("retro_skip", true) # flash() tweens it
 	screen.material_override = _screen_material
 	for symbol in Symbols.COUNT:
 		_add_button(symbol)
@@ -37,9 +42,19 @@ func _ready() -> void:
 		sprite.visible = false
 		screen.add_child(sprite)
 		_entry_sprites.append(sprite)
+	if screen_text:
+		_screen_label = Label3D.new()
+		_screen_label.text = screen_text
+		_screen_label.font_size = 14
+		_screen_label.pixel_size = 0.002
+		_screen_label.modulate = Color(0.5, 1.0, 0.6)
+		_screen_label.position.z = 0.006
+		screen.add_child(_screen_label)
 
 
 func show_entry(entered: PackedInt32Array) -> void:
+	if _screen_label:
+		_screen_label.visible = entered.is_empty()
 	for i in ENTRY_SLOTS:
 		_entry_sprites[i].visible = i < entered.size()
 		if i < entered.size():

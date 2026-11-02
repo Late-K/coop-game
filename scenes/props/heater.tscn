@@ -1,0 +1,60 @@
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scenes/props/heater.gd" id="1_heater"]
+[ext_resource type="Script" path="res://scenes/zones/temperature_zone.gd" id="2_zone"]
+[ext_resource type="Script" path="res://scenes/props/power_light.gd" id="3_light"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_reach"]
+size = Vector3(1.4, 2, 1.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_body"]
+size = Vector3(1, 1.1, 0.5)
+
+[sub_resource type="StandardMaterial3D" id="Material_body"]
+albedo_color = Color(0.35, 0.3, 0.27, 1)
+metallic = 0.5
+
+[sub_resource type="BoxMesh" id="BoxMesh_grille"]
+size = Vector3(0.8, 0.5, 0.02)
+
+[sub_resource type="StandardMaterial3D" id="Material_grille"]
+albedo_color = Color(0.25, 0.08, 0.02, 1)
+emission_enabled = true
+emission = Color(0.6, 0.15, 0, 1)
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_heat"]
+radius = 4.0
+
+[node name="Heater" type="Area3D"]
+script = ExtResource("1_heater")
+prompt = "Heater"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0.6)
+shape = SubResource("BoxShape3D_reach")
+
+[node name="Body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0.25)
+mesh = SubResource("BoxMesh_body")
+surface_material_override/0 = SubResource("Material_body")
+
+[node name="Grille" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0.51)
+mesh = SubResource("BoxMesh_grille")
+surface_material_override/0 = SubResource("Material_grille")
+
+[node name="Light" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1)
+light_color = Color(1, 0.55, 0.2, 1)
+light_energy = 2.0
+omni_range = 5.0
+script = ExtResource("3_light")
+
+[node name="Zone" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1)
+script = ExtResource("2_zone")
+warmth_rate = 12.0
+active = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Zone"]
+shape = SubResource("SphereShape3D_heat")
