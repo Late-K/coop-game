@@ -1,10 +1,14 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scenes/levels/test_level.gd" id="1_level"]
 [ext_resource type="PackedScene" path="res://scenes/puzzles/symbol_code/keypad.tscn" id="2_keypad"]
 [ext_resource type="PackedScene" path="res://scenes/puzzles/symbol_code/code_monitor.tscn" id="3_monitor"]
 [ext_resource type="PackedScene" path="res://scenes/props/door.tscn" id="4_door"]
 [ext_resource type="Script" path="res://scenes/puzzles/symbol_code/symbol_code_puzzle.gd" id="5_puzzle"]
+[ext_resource type="PackedScene" path="res://scenes/items/item_tube.tscn" id="6_tube"]
+[ext_resource type="PackedScene" path="res://scenes/props/save_terminal.tscn" id="7_save"]
+[ext_resource type="PackedScene" path="res://scenes/items/pickup.tscn" id="8_pickup"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/enemy.tscn" id="9_enemy"]
 
 [sub_resource type="Environment" id="Environment_dark"]
 background_mode = 1
@@ -111,6 +115,51 @@ script = ExtResource("5_puzzle")
 keypad = NodePath("../Keypad")
 monitor = NodePath("../CodeMonitor")
 door = NodePath("../CorridorDoor")
+
+[node name="TubeA" parent="." node_paths=PackedStringArray("partner") instance=ExtResource("6_tube")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -13, 0, 6)
+partner = NodePath("../TubeB")
+
+[node name="TubeB" parent="." node_paths=PackedStringArray("partner") instance=ExtResource("6_tube")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 13, 0, 6)
+partner = NodePath("../TubeA")
+
+[node name="SaveTerminalA" parent="." instance=ExtResource("7_save")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -8, 0, 6)
+
+[node name="SaveTerminalB" parent="." instance=ExtResource("7_save")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 8, 0, 6)
+
+[node name="Placements" type="Node3D" parent="."]
+process_mode = 4
+
+[node name="Medkit" parent="Placements" instance=ExtResource("8_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 0, -5)
+item_id = "medkit"
+count = 1
+
+[node name="AmmoA" parent="Placements" instance=ExtResource("8_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 4.5)
+item_id = "ammo"
+count = 6
+
+[node name="Pistol" parent="Placements" instance=ExtResource("8_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.5, 0, 3.5)
+item_id = "pistol"
+count = 1
+
+[node name="AmmoB" parent="Placements" instance=ExtResource("8_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.5, 0, 4.5)
+item_id = "ammo"
+count = 6
+
+[node name="Enemy" parent="Placements" instance=ExtResource("9_enemy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, -4.5)
+
+[node name="World" type="Node3D" parent="."]
+
+[node name="WorldSpawner" type="MultiplayerSpawner" parent="."]
+spawn_path = NodePath("../World")
 
 [node name="SpawnPoints" type="Node3D" parent="."]
 

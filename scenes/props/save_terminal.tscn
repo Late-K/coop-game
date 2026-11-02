@@ -1,0 +1,43 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scenes/props/save_terminal.gd" id="1_save"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_reach"]
+size = Vector3(1.2, 2, 1.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_cabinet"]
+size = Vector3(0.6, 1.2, 0.4)
+
+[sub_resource type="BoxMesh" id="BoxMesh_screen"]
+size = Vector3(0.45, 0.3, 0.02)
+
+[sub_resource type="StandardMaterial3D" id="Material_screen"]
+albedo_color = Color(0.1, 0.4, 0.15, 1)
+emission_enabled = true
+emission = Color(0.2, 0.9, 0.35, 1)
+
+[node name="SaveTerminal" type="Area3D"]
+script = ExtResource("1_save")
+prompt = "Save (set checkpoint)"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0.6)
+shape = SubResource("BoxShape3D_reach")
+
+[node name="Cabinet" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0.2)
+mesh = SubResource("BoxMesh_cabinet")
+
+[node name="Screen" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0.41)
+mesh = SubResource("BoxMesh_screen")
+surface_material_override/0 = SubResource("Material_screen")
+
+[node name="Glow" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0.8)
+light_color = Color(0.3, 1, 0.45, 1)
+light_energy = 0.6
+omni_range = 2.5
+
+[node name="RespawnPoint" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 1.2)

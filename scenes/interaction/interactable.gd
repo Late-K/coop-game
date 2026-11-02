@@ -24,5 +24,10 @@ func _init() -> void:
 	input_ray_pickable = false
 
 
+## Text after "[E]" in the prompt. Override for prompts that depend on the player.
+func get_prompt(_player: Player) -> String:
+	return prompt
+
+
 func interact(player: Player) -> void:
 	used.emit(player)
