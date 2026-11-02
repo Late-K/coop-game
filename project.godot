@@ -18,6 +18,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 Net="*res://autoload/net.gd"
+Symbols="*res://autoload/symbols.gd"
 
 [display]
 
@@ -74,6 +75,12 @@ radio={
 , Object(InputEventJoypadButton,"resource_local_to_scene":false,"resource_name":"","device":-1,"button_index":9,"pressure":0.0,"pressed":false,"script":null)
 ]
 }
+
+[layer_names]
+
+3d_physics/layer_1="world"
+3d_physics/layer_3="interactable"
+3d_physics/layer_5="clickable"
 
 [physics]
 

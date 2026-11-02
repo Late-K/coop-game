@@ -56,8 +56,8 @@ PS1 / low-poly retro: low-res render (~480×270) upscaled with nearest filtering
 
 ## Roadmap
 - **M0** Pre-production: this doc + paper-prototype 2–3 radio puzzles with a friend.
-- **M1** Networked greybox: host/join, two players moving in 3rd person, disconnect handling. ← *current*
-- **M2** Interaction + perspective: interactables, 1st-person terminals, one cross-player puzzle.
+- **M1** Networked greybox: host/join, two players moving in 3rd person, disconnect handling. ✓
+- **M2** Interaction + perspective: interactables, 1st-person terminals, one cross-player puzzle. ← *current*
 - **M3** Survival core: health, 6-slot inventory, item tube, one gun, one enemy, save room.
 - **M4** Vertical slice (20–30 min) + PS1 visual pass + playtests.
 - **M5** Steam lobbies + in-game radio voice.

@@ -1,0 +1,22 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scenes/props/door.gd" id="1_door"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_door"]
+size = Vector3(0.3, 2.5, 3)
+
+[sub_resource type="BoxMesh" id="BoxMesh_door"]
+size = Vector3(0.3, 2.5, 3)
+
+[sub_resource type="StandardMaterial3D" id="Material_door"]
+albedo_color = Color(0.55, 0.42, 0.12, 1)
+
+[node name="Door" type="AnimatableBody3D"]
+script = ExtResource("1_door")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_door")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_door")
+surface_material_override/0 = SubResource("Material_door")
