@@ -10,8 +10,14 @@ extends Node
 
 const CHAPTER_1_PATH := "res://scenes/levels/chapter_1.tscn"
 const TEST_LEVEL_PATH := "res://scenes/levels/test_level.tscn"
+const MENU_AMBIENCE := "amb_lab"
 
 var _in_game := false
+## True while the in-game pause menu is up (the game keeps running; your character waits).
+var menu_open := false
+var _pause_menu := PanelContainer.new()
+var _pause_title := Label.new()
+var _resume_button := Button.new()
 ## Pass `--level=test` to play the test level instead of Chapter 1.
 var _level_path := CHAPTER_1_PATH
 ## Set when a chapter ends, so the host closing the session does not read as a disconnect.
@@ -23,6 +29,8 @@ var _end_status := ""
 @onready var menu: MainMenu = $MainMenu
 @onready var lobby: Lobby = $Lobby
 @onready var hud: Control = $Hud
+## Cinematic black bars during play (Signalis does this); the HUD sits on top of them.
+@onready var letterbox: Control = $Letterbox
 @onready var hud_label: Label = $Hud/Label
 
 
@@ -41,6 +49,8 @@ func _ready() -> void:
 	lobby.hide()
 	hud.hide()
 	Retro.attach(game_view)
+	_build_pause_menu()
+	Sound.set_ambience(MENU_AMBIENCE)
 	_handle_dev_args.call_deferred()
 
 
@@ -53,8 +63,49 @@ func _notification(what: int) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") and _in_game:
+		get_viewport().set_input_as_handled()
+		_set_pause_menu(not menu_open)
+
+
+## A small bordered menu on Esc: Resume, or leave the session (which ends it for both).
+func _build_pause_menu() -> void:
+	var frame := StyleBoxFlat.new()
+	frame.bg_color = Color(0, 0, 0, 0.94)
+	frame.set_border_width_all(2)
+	frame.border_color = Color(0.85, 0.85, 0.85)
+	frame.set_content_margin_all(22)
+	_pause_menu.add_theme_stylebox_override("panel", frame)
+	_pause_menu.anchor_left = 0.5
+	_pause_menu.anchor_right = 0.5
+	_pause_menu.anchor_top = 0.5
+	_pause_menu.anchor_bottom = 0.5
+	_pause_menu.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_pause_menu.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_pause_menu.visible = false
+	add_child(_pause_menu)
+	var column := VBoxContainer.new()
+	column.custom_minimum_size = Vector2(320, 0)
+	column.add_theme_constant_override("separation", 10)
+	_pause_menu.add_child(column)
+	_pause_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(_pause_title)
+	_resume_button.text = "Resume"
+	_resume_button.pressed.connect(_set_pause_menu.bind(false))
+	column.add_child(_resume_button)
+	var leave := Button.new()
+	leave.text = "Leave session (ends it for both)"
+	leave.pressed.connect(func() -> void:
 		MetaSave.record("sessions_abandoned")
 		_return_to_menu("Left the session.")
+	)
+	column.add_child(leave)
+
+
+func _set_pause_menu(open: bool) -> void:
+	menu_open = open
+	_pause_menu.visible = open
+	if open:
+		_resume_button.grab_focus()
 
 
 func _on_host_requested() -> void:
@@ -148,25 +199,28 @@ func _enter_game() -> void:
 	menu.hide()
 	lobby.hide()
 	_set_hud_text("in session")
-	hud.show()
+	letterbox.show()
 
 
 func _set_hud_text(status: String) -> void:
 	var role: String = Session.ROLE_NAMES[Session.local_role()]
-	hud_label.text = "%s — %s   |   Esc: leave" % [role, status]
+	_pause_title.text = "%s — %s" % [role.to_upper(), status]
 
 
 func _return_to_menu(status: String) -> void:
 	print("[main] back to menu: %s" % status)
 	_in_game = false
 	_end_status = ""
+	_set_pause_menu(false)
 	Net.leave()
 	Session.reset()
 	Story.clear()
 	_clear_level()
 	hud.hide()
+	letterbox.hide()
 	lobby.hide()
 	menu.show()
+	Sound.set_ambience(MENU_AMBIENCE)
 	menu.set_busy(false)
 	menu.set_status(status)
 

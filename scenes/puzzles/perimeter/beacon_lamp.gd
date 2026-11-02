@@ -19,6 +19,7 @@ var _lamp_material := StandardMaterial3D.new()
 var _pillar: MeshInstance3D
 var _light := OmniLight3D.new()
 var _heat := TemperatureZone.new()
+var _hum: AudioStreamPlayer3D
 
 
 func _ready() -> void:
@@ -84,6 +85,8 @@ func _ready() -> void:
 	_heat.add_child(heat_shape)
 	_heat.position.y = 1.0
 	add_child(_heat)
+	_hum = Sound.attach_loop("lamp_hum", self, -8.0, 10.0)
+	_hum.position = lamp.position
 
 
 func set_active(active: bool) -> void:
@@ -91,3 +94,7 @@ func set_active(active: bool) -> void:
 	_pillar.visible = active
 	_light.light_energy = 2.5 if active else 0.0
 	_heat.set_active(active)
+	if active and not _hum.playing:
+		_hum.play()
+	elif not active:
+		_hum.stop()

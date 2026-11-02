@@ -1,6 +1,7 @@
 class_name Heater
 extends Interactable
-## Runs on a heat cell. Once fed, it warms the area, lights up and opens its doors
+## Runs on a heat cell. Using it opens the terminal on the heater: the player has to choose
+## the cell from their items. Once fed, it warms the area, lights up and opens its doors
 ## (e.g. thaws a frozen bulkhead). The server owns whether it is on.
 
 @export var doors: Array[Door] = []
@@ -11,21 +12,34 @@ var is_on := false
 
 @onready var zone: TemperatureZone = $Zone
 @onready var light: PowerLight = $Light
+@onready var _hum := Sound.attach_loop("heater_loop", self, -4.0, 10.0)
 
 
-func get_prompt(player: Player) -> String:
-	if is_on:
-		return "Heater (running)"
-	if player.inventory.has("heat_cell"):
-		return "Insert heat cell"
-	return "Heater (needs a heat cell)"
+func get_prompt(_player: Player) -> String:
+	return "Heater (running)" if is_on else "Examine heater"
 
 
 func interact(player: Player) -> void:
-	if is_on or not player.inventory.has("heat_cell"):
-		return
-	player.inventory.remove("heat_cell", 1)
+	if not is_on:
+		player.open_inventory(self)
+
+
+func terminal_text() -> String:
+	return "HEATER UNIT 4\n\nStatus: no power.\nAccepts a sealed thermal cell."
+
+
+## Terminal device: only the heat cell fits. Anything else stays in your hands.
+func use_slot_on(player: Player, index: int) -> bool:
+	if is_on:
+		return true
+	if player.inventory.slots[index]["id"] != "heat_cell":
+		player.notify("That doesn't fit")
+		Sound.play_ui("code_wrong", -8.0)
+		return false
+	player.inventory.remove_from(index, 1)
+	Sound.play_ui("keypad_press", -2.0, 0.7)
 	_insert_cell.rpc_id(1)
+	return true
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -39,6 +53,7 @@ func _insert_cell() -> void:
 @rpc("authority", "call_local", "reliable")
 func _turn_on() -> void:
 	is_on = true
+	_hum.play()
 	zone.set_active(true)
 	light.set_active(true)
 	for door in doors:

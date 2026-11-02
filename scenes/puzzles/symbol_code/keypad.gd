@@ -62,6 +62,7 @@ func show_entry(entered: PackedInt32Array) -> void:
 
 
 func flash(correct: bool) -> void:
+	Sound.play_at("code_right" if correct else "code_wrong", global_position + Vector3.UP * 1.4, 0.0, 20.0, 0.0)
 	var tween := create_tween()
 	if correct:
 		tween.tween_property(_screen_material, "albedo_color", SCREEN_CORRECT, 0.2)
@@ -112,4 +113,5 @@ func _on_button_input_event(_camera: Node, event: InputEvent, _position: Vector3
 		return
 	var click := event as InputEventMouseButton
 	if click and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
+		Sound.play_ui("keypad_press")
 		symbol_pressed.emit(symbol)

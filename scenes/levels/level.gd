@@ -17,6 +17,10 @@ const CHAPTER_END_DELAY := 7.0
 @export var chapter_title := ""
 ## Played for both players shortly after the level starts.
 @export var intro_lines: Array[String] = []
+## Background loop wherever no EnvironmentZone sets one (a sound name, see Sound).
+@export var ambience := "amb_facility"
+## Footstep sound wherever no EnvironmentZone sets one.
+@export var footsteps := "step_metal"
 
 @onready var players: Node3D = $Players
 @onready var player_spawner: MultiplayerSpawner = $PlayerSpawner

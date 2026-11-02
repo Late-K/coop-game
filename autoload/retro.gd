@@ -4,7 +4,10 @@ extends Node
 ## - Every StandardMaterial3D that enters the tree is swapped for the PS1 surface shader
 ##   (vertex snapping, affine textures, nearest filtering), so content is authored with
 ##   normal materials. Opt a material out with `material.set_meta("retro_skip", true)`,
-##   e.g. one a script animates. Transparent materials are left alone.
+##   e.g. one a script animates. Transparent materials are left alone. A material with
+##   the "retro_black_tops" meta renders its upward faces pure black (wall tops in the void).
+##   With "UV1 world triplanar" on, textures are laid out in world space (uv1_scale = repeats
+##   per metre); a "retro_wall_texture" meta gives vertical faces their own texture.
 ## - main.tscn renders the game world into a low-res SubViewport (`attach()`), scaled up
 ##   with hard pixels plus colour reduction and dithering (shaders/ps1_screen.gdshader).
 ## - F2 toggles the whole effect, for comparison while developing.
@@ -40,6 +43,12 @@ func attach(view: SubViewportContainer) -> void:
 	_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_view.resized.connect(_update_view)
 	_update_view()
+
+
+## Player condition shown on screen (0..1 each): see ps1_screen.gdshader.
+func set_condition(hurt: float, cold: float) -> void:
+	_screen_material.set_shader_parameter("hurt", hurt)
+	_screen_material.set_shader_parameter("cold", cold)
 
 
 func _update_view() -> void:
@@ -93,5 +102,11 @@ func _convert(source: Material) -> Material:
 	material.set_shader_parameter("metallic", standard.metallic)
 	material.set_shader_parameter("roughness", standard.roughness)
 	material.set_shader_parameter("uv_scale", Vector2(standard.uv1_scale.x, standard.uv1_scale.y))
+	material.set_shader_parameter("black_tops", standard.get_meta("retro_black_tops", false))
+	if standard.uv1_world_triplanar:
+		material.set_shader_parameter("world_uv", true)
+		if standard.has_meta("retro_wall_texture"):
+			material.set_shader_parameter("wall_texture", standard.get_meta("retro_wall_texture"))
+			material.set_shader_parameter("has_wall_texture", true)
 	_converted[standard] = material
 	return material

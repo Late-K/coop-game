@@ -1,4 +1,4 @@
-[gd_scene load_steps=51 format=3]
+[gd_scene load_steps=74 format=3]
 
 [ext_resource type="Script" path="res://scenes/levels/level.gd" id="1_r"]
 [ext_resource type="PackedScene" path="res://scenes/puzzles/symbol_code/keypad.tscn" id="2_r"]
@@ -12,24 +12,37 @@
 [ext_resource type="Script" path="res://scenes/story/story_trigger.gd" id="10_r"]
 [ext_resource type="Script" path="res://scenes/zones/temperature_zone.gd" id="11_r"]
 [ext_resource type="PackedScene" path="res://scenes/props/heater.tscn" id="12_r"]
-[ext_resource type="Script" path="res://scenes/props/power_light.gd" id="13_r"]
-[ext_resource type="Script" path="res://scenes/puzzles/symbol_code/wall_code_display.gd" id="14_r"]
-[ext_resource type="Script" path="res://scenes/story/examine_spot.gd" id="15_r"]
-[ext_resource type="Script" path="res://scenes/story/facility_map.gd" id="16_r"]
-[ext_resource type="Script" path="res://scenes/puzzles/perimeter/beacon_lamp.gd" id="17_r"]
-[ext_resource type="Script" path="res://scenes/puzzles/perimeter/beacon_network.gd" id="18_r"]
-[ext_resource type="Script" path="res://scenes/puzzles/perimeter/perimeter_map.gd" id="19_r"]
-[ext_resource type="Script" path="res://scenes/zones/environment_zone.gd" id="20_r"]
+[ext_resource type="PackedScene" path="res://scenes/props/item_box.tscn" id="13_r"]
+[ext_resource type="Script" path="res://scenes/props/power_light.gd" id="14_r"]
+[ext_resource type="Script" path="res://scenes/puzzles/symbol_code/wall_code_display.gd" id="15_r"]
+[ext_resource type="Script" path="res://scenes/story/examine_spot.gd" id="16_r"]
+[ext_resource type="Script" path="res://scenes/story/facility_map.gd" id="17_r"]
+[ext_resource type="Script" path="res://scenes/puzzles/perimeter/beacon_lamp.gd" id="18_r"]
+[ext_resource type="Script" path="res://scenes/puzzles/perimeter/beacon_network.gd" id="19_r"]
+[ext_resource type="Script" path="res://scenes/puzzles/perimeter/perimeter_map.gd" id="20_r"]
+[ext_resource type="Script" path="res://scenes/zones/environment_zone.gd" id="21_r"]
+[ext_resource type="Script" path="res://scenes/zones/camera_zone.gd" id="22_r"]
+[ext_resource type="Texture2D" path="res://textures/floor_tiles.png" id="23_r"]
+[ext_resource type="Texture2D" path="res://textures/wall_panel.png" id="24_r"]
+[ext_resource type="Texture2D" path="res://textures/hazard.png" id="25_r"]
 
 [sub_resource type="Environment" id="Environment_facility"]
 background_mode = 1
-background_color = Color(0.02, 0.02, 0.03, 1)
+background_color = Color(0, 0, 0, 1)
 ambient_light_source = 2
-ambient_light_color = Color(0.33, 0.36, 0.45, 1)
-ambient_light_energy = 0.45
+ambient_light_color = Color(0.5, 0.5, 0.52, 1)
+ambient_light_energy = 0.12
 fog_enabled = true
-fog_light_color = Color(0.05, 0.05, 0.07, 1)
-fog_density = 0.035
+fog_light_color = Color(0, 0, 0, 1)
+fog_density = 0.008
+glow_enabled = true
+glow_intensity = 1.0
+glow_strength = 1.1
+glow_blend_mode = 1
+glow_hdr_threshold = 1.0
+adjustment_enabled = true
+adjustment_contrast = 1.12
+adjustment_saturation = 0.85
 
 [sub_resource type="Environment" id="Environment_whiteout"]
 background_mode = 1
@@ -41,14 +54,29 @@ fog_enabled = true
 fog_mode = 1
 fog_light_color = Color(0.45, 0.5, 0.56, 1)
 fog_density = 1.0
-fog_depth_begin = 9.0
-fog_depth_end = 17.0
+fog_depth_begin = 17.0
+fog_depth_end = 25.0
 
 [sub_resource type="StandardMaterial3D" id="Material_wall"]
 albedo_color = Color(0.42, 0.43, 0.46, 1)
+metadata/retro_black_tops = true
 
 [sub_resource type="StandardMaterial3D" id="Material_floor"]
-albedo_color = Color(0.24, 0.25, 0.27, 1)
+albedo_color = Color(0.85, 0.85, 0.85, 1)
+albedo_texture = ExtResource("23_r")
+uv1_scale = Vector3(1, 1, 1)
+uv1_triplanar = true
+uv1_world_triplanar = true
+metadata/retro_wall_texture = ExtResource("24_r")
+
+[sub_resource type="StandardMaterial3D" id="Material_hazard"]
+albedo_texture = ExtResource("25_r")
+uv1_scale = Vector3(2, 2, 2)
+uv1_triplanar = true
+uv1_world_triplanar = true
+
+[sub_resource type="BoxMesh" id="BoxMesh_threshold"]
+size = Vector3(3, 0.02, 0.35)
 
 [sub_resource type="StandardMaterial3D" id="Material_block"]
 albedo_color = Color(0.36, 0.34, 0.33, 1)
@@ -58,6 +86,12 @@ albedo_color = Color(0.78, 0.82, 0.88, 1)
 
 [sub_resource type="StandardMaterial3D" id="Material_ice_ridge"]
 albedo_color = Color(0.66, 0.74, 0.82, 1)
+
+[sub_resource type="StandardMaterial3D" id="Material_ceiling"]
+albedo_color = Color(0.16, 0.17, 0.18, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_ceiling"]
+size = Vector3(53, 0.1, 51)
 
 [sub_resource type="StandardMaterial3D" id="Material_pod"]
 albedo_color = Color(0.55, 0.6, 0.62, 1)
@@ -99,40 +133,109 @@ height = 0.08
 radial_segments = 4
 rings = 2
 
+[sub_resource type="BoxMesh" id="BoxMesh_fixture"]
+size = Vector3(1.2, 0.06, 0.25)
+
+[sub_resource type="StandardMaterial3D" id="Material_fixture_0"]
+albedo_color = Color(0.8, 0.88, 1, 1)
+emission_enabled = true
+emission = Color(0.8, 0.88, 1, 1)
+emission_energy_multiplier = 4.0
+
+[sub_resource type="StandardMaterial3D" id="Material_fixture_1"]
+albedo_color = Color(1, 0.68, 0.32, 1)
+emission_enabled = true
+emission = Color(1, 0.68, 0.32, 1)
+emission_energy_multiplier = 4.0
+
+[sub_resource type="StandardMaterial3D" id="Material_fixture_2"]
+albedo_color = Color(1, 0.18, 0.12, 1)
+emission_enabled = true
+emission = Color(1, 0.18, 0.12, 1)
+emission_energy_multiplier = 4.0
+
+[sub_resource type="StandardMaterial3D" id="Material_fixture_3"]
+albedo_color = Color(0.3, 0.95, 0.8, 1)
+emission_enabled = true
+emission = Color(0.3, 0.95, 0.8, 1)
+emission_energy_multiplier = 4.0
+
+[sub_resource type="StandardMaterial3D" id="Material_fixture_4"]
+albedo_color = Color(1, 0.75, 0.45, 1)
+emission_enabled = true
+emission = Color(1, 0.75, 0.45, 1)
+emission_energy_multiplier = 4.0
+
+[sub_resource type="StandardMaterial3D" id="Material_fixture_5"]
+albedo_color = Color(0.45, 1, 0.3, 1)
+emission_enabled = true
+emission = Color(0.45, 1, 0.3, 1)
+emission_energy_multiplier = 4.0
+
+[sub_resource type="StandardMaterial3D" id="Material_fixture_6"]
+albedo_color = Color(0.85, 0.9, 0.55, 1)
+emission_enabled = true
+emission = Color(0.85, 0.9, 0.55, 1)
+emission_energy_multiplier = 4.0
+
+[sub_resource type="StandardMaterial3D" id="Material_fixture_7"]
+albedo_color = Color(1, 0.55, 0.2, 1)
+emission_enabled = true
+emission = Color(1, 0.55, 0.2, 1)
+emission_energy_multiplier = 4.0
+
+[sub_resource type="StandardMaterial3D" id="Material_fixture_8"]
+albedo_color = Color(0.75, 0.8, 0.85, 1)
+emission_enabled = true
+emission = Color(0.75, 0.8, 0.85, 1)
+emission_energy_multiplier = 4.0
+
 [sub_resource type="BoxShape3D" id="Box_0"]
-size = Vector3(54, 3, 60)
+size = Vector3(8, 3, 8)
 
 [sub_resource type="BoxShape3D" id="Box_1"]
-size = Vector3(9, 3, 3)
+size = Vector3(10, 3, 10)
 
 [sub_resource type="BoxShape3D" id="Box_2"]
-size = Vector3(12, 3, 12)
+size = Vector3(20, 3, 10)
 
-[sub_resource type="SphereShape3D" id="Sphere_3"]
-radius = 2.2
+[sub_resource type="BoxShape3D" id="Box_3"]
+size = Vector3(5.0, 3, 4.5)
 
 [sub_resource type="BoxShape3D" id="Box_4"]
-size = Vector3(1.6, 2, 1.2)
+size = Vector3(12, 3, 12)
 
 [sub_resource type="BoxShape3D" id="Box_5"]
-size = Vector3(3, 1.5, 2.2)
+size = Vector3(54, 3, 60)
 
 [sub_resource type="BoxShape3D" id="Box_6"]
-size = Vector3(3, 2, 3)
-
-[sub_resource type="BoxShape3D" id="Box_7"]
-size = Vector3(3, 2, 2)
-
-[sub_resource type="BoxShape3D" id="Box_8"]
-size = Vector3(2, 2, 3)
-
-[sub_resource type="BoxShape3D" id="Box_9"]
-size = Vector3(4, 2, 2)
-
-[sub_resource type="BoxShape3D" id="Box_10"]
 size = Vector3(20, 2, 10)
 
+[sub_resource type="BoxShape3D" id="Box_7"]
+size = Vector3(9, 3, 3)
+
+[sub_resource type="SphereShape3D" id="Sphere_8"]
+radius = 2.2
+
+[sub_resource type="BoxShape3D" id="Box_9"]
+size = Vector3(1.6, 2, 1.2)
+
+[sub_resource type="BoxShape3D" id="Box_10"]
+size = Vector3(3, 1.5, 2.2)
+
 [sub_resource type="BoxShape3D" id="Box_11"]
+size = Vector3(3, 2, 3)
+
+[sub_resource type="BoxShape3D" id="Box_12"]
+size = Vector3(3, 2, 2)
+
+[sub_resource type="BoxShape3D" id="Box_13"]
+size = Vector3(2, 2, 3)
+
+[sub_resource type="BoxShape3D" id="Box_14"]
+size = Vector3(4, 2, 2)
+
+[sub_resource type="BoxShape3D" id="Box_15"]
 size = Vector3(4.5, 2, 4)
 
 [node name="Chapter1" type="Node3D"]
@@ -255,6 +358,13 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.5, 1.25, -7)
 size = Vector3(1.4, 2.5, 1.4)
 material = SubResource("Material_block")
 
+[node name="Ceiling" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 2.56, -10.5)
+layers = 2
+cast_shadow = 0
+mesh = SubResource("BoxMesh_ceiling")
+surface_material_override/0 = SubResource("Material_ceiling")
+
 [node name="Snowfield" type="CSGCombiner3D" parent="."]
 use_collision = true
 
@@ -325,72 +435,237 @@ material = SubResource("Material_ice_ridge")
 
 [node name="Lights" type="Node3D" parent="."]
 
-[node name="Cell" type="OmniLight3D" parent="Lights"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 2.4, 10)
-light_color = Color(0.75, 0.85, 1, 1)
-light_energy = 1.0
-omni_range = 9
+[node name="Cell" type="SpotLight3D" parent="Lights"]
+transform = Transform3D(-1, 0, 0, 0, 0.5, 0.866025, 0, 0.866025, -0.5, -22, 2.4, 6.6)
+light_color = Color(0.8, 0.88, 1, 1)
+light_energy = 3.6
+spot_range = 12
+spot_angle = 52.0
+spot_attenuation = 0.8
 shadow_enabled = true
 
-[node name="Storage" type="OmniLight3D" parent="Lights"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, 2.4, -7)
-light_color = Color(0.9, 0.85, 0.7, 1)
-light_energy = 1.1
-omni_range = 10
+[node name="Fixture" type="MeshInstance3D" parent="Lights/Cell"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("BoxMesh_fixture")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_fixture_0")
+
+[node name="Fill" type="OmniLight3D" parent="Lights/Cell"]
+light_color = Color(0.8, 0.88, 1, 1)
+light_energy = 0.35
+omni_range = 9.600000000000001
+
+[node name="Storage" type="SpotLight3D" parent="Lights"]
+transform = Transform3D(-1, 0, 0, 0, 0.5, 0.866025, 0, 0.866025, -0.5, -21, 2.4, -11.4)
+light_color = Color(1, 0.68, 0.32, 1)
+light_energy = 5.5
+spot_range = 13
+spot_angle = 52.0
+spot_attenuation = 0.8
 shadow_enabled = true
 
-[node name="BlindRoom" type="OmniLight3D" parent="Lights"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 2.4, -7)
-light_color = Color(1, 0.35, 0.3, 1)
-light_energy = 1.0
-omni_range = 9
+[node name="Fixture" type="MeshInstance3D" parent="Lights/Storage"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("BoxMesh_fixture")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_fixture_1")
+
+[node name="Fill" type="OmniLight3D" parent="Lights/Storage"]
+light_color = Color(1, 0.68, 0.32, 1)
+light_energy = 0.35
+omni_range = 10.4
+
+[node name="BlindRoom" type="SpotLight3D" parent="Lights"]
+transform = Transform3D(-1, 0, 0, 0, 0.5, 0.866025, 0, 0.866025, -0.5, -8, 2.4, -11.4)
+light_color = Color(1, 0.18, 0.12, 1)
+light_energy = 6.5
+spot_range = 14
+spot_angle = 52.0
+spot_attenuation = 0.8
 shadow_enabled = true
 
-[node name="ObservationWest" type="OmniLight3D" parent="Lights"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 2.4, -25)
-light_color = Color(0.5, 0.9, 0.85, 1)
-light_energy = 1.0
-omni_range = 10
+[node name="Fixture" type="MeshInstance3D" parent="Lights/BlindRoom"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("BoxMesh_fixture")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_fixture_2")
+
+[node name="Fill" type="OmniLight3D" parent="Lights/BlindRoom"]
+light_color = Color(1, 0.18, 0.12, 1)
+light_energy = 0.35
+omni_range = 11.200000000000001
+
+[node name="BlindRoomFill" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 2.4, -3)
+light_color = Color(1, 0.18, 0.12, 1)
+light_energy = 1.8
+omni_range = 8
+
+[node name="ObservationWest" type="SpotLight3D" parent="Lights"]
+transform = Transform3D(-1, 0, 0, 0, 0.5, 0.866025, 0, 0.866025, -0.5, -5, 2.4, -29.4)
+light_color = Color(0.3, 0.95, 0.8, 1)
+light_energy = 3.3
+spot_range = 13
+spot_angle = 52.0
+spot_attenuation = 0.8
 shadow_enabled = true
 
-[node name="ObservationEast" type="OmniLight3D" parent="Lights"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 2.4, -25)
-light_color = Color(0.5, 0.9, 0.85, 1)
-light_energy = 1.0
-omni_range = 10
+[node name="Fixture" type="MeshInstance3D" parent="Lights/ObservationWest"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("BoxMesh_fixture")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_fixture_3")
+
+[node name="Fill" type="OmniLight3D" parent="Lights/ObservationWest"]
+light_color = Color(0.3, 0.95, 0.8, 1)
+light_energy = 0.35
+omni_range = 10.4
+
+[node name="ObservationEast" type="SpotLight3D" parent="Lights"]
+transform = Transform3D(-1, 0, 0, 0, 0.5, 0.866025, 0, 0.866025, -0.5, 5, 2.4, -29.4)
+light_color = Color(0.3, 0.95, 0.8, 1)
+light_energy = 3.3
+spot_range = 13
+spot_angle = 52.0
+spot_attenuation = 0.8
+shadow_enabled = true
+
+[node name="Fixture" type="MeshInstance3D" parent="Lights/ObservationEast"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("BoxMesh_fixture")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_fixture_3")
+
+[node name="Fill" type="OmniLight3D" parent="Lights/ObservationEast"]
+light_color = Color(0.3, 0.95, 0.8, 1)
+light_energy = 0.35
+omni_range = 10.4
 
 [node name="Elevator" type="OmniLight3D" parent="Lights"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, -32.5)
-light_color = Color(1, 0.8, 0.5, 1)
-light_energy = 0.8
+light_color = Color(1, 0.75, 0.45, 1)
+light_energy = 1.6
 omni_range = 5
 
+[node name="Fixture" type="MeshInstance3D" parent="Lights/Elevator"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
+mesh = SubResource("BoxMesh_fixture")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_fixture_4")
+
 [node name="EastHallEmergency" type="OmniLight3D" parent="Lights"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 2.4, 4)
-light_color = Color(1, 0.15, 0.1, 1)
-light_energy = 0.4
-omni_range = 10
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 2.4, -1.4)
+light_color = Color(0.45, 1, 0.3, 1)
+light_energy = 1.5
+omni_range = 12
 
-[node name="EastHallPower" type="OmniLight3D" parent="Lights"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 2.4, 4)
-light_color = Color(0.85, 0.9, 1, 1)
-light_energy = 1.6
-omni_range = 11
-shadow_enabled = true
-script = ExtResource("13_r")
+[node name="Fixture" type="MeshInstance3D" parent="Lights/EastHallEmergency"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
+mesh = SubResource("BoxMesh_fixture")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_fixture_5")
 
-[node name="Survival" type="OmniLight3D" parent="Lights"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 2.4, -10)
-light_color = Color(0.7, 0.75, 0.9, 1)
-light_energy = 0.8
-omni_range = 10
+[node name="EastHallPower" type="SpotLight3D" parent="Lights"]
+transform = Transform3D(-1, 0, 0, 0, 0.5, 0.866025, 0, 0.866025, -0.5, 12, 2.4, -1.4)
+light_color = Color(0.9, 0.95, 1, 1)
+light_energy = 5.5
+spot_range = 14
+spot_angle = 52.0
+spot_attenuation = 0.8
 shadow_enabled = true
+script = ExtResource("14_r")
+
+[node name="Survival" type="SpotLight3D" parent="Lights"]
+transform = Transform3D(-1, 0, 0, 0, 0.5, 0.866025, 0, 0.866025, -0.5, 14, 2.4, -15.4)
+light_color = Color(0.85, 0.9, 0.55, 1)
+light_energy = 4.5
+spot_range = 14
+spot_angle = 52.0
+spot_attenuation = 0.8
+shadow_enabled = true
+
+[node name="Fixture" type="MeshInstance3D" parent="Lights/Survival"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("BoxMesh_fixture")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_fixture_6")
+
+[node name="Fill" type="OmniLight3D" parent="Lights/Survival"]
+light_color = Color(0.85, 0.9, 0.55, 1)
+light_energy = 0.35
+omni_range = 11.200000000000001
 
 [node name="Airlock" type="OmniLight3D" parent="Lights"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21, 2.2, 4.5)
-light_color = Color(1, 0.6, 0.2, 1)
-light_energy = 0.8
+light_color = Color(1, 0.55, 0.2, 1)
+light_energy = 1.4
 omni_range = 6
+
+[node name="Fixture" type="MeshInstance3D" parent="Lights/Airlock"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
+mesh = SubResource("BoxMesh_fixture")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_fixture_7")
+
+[node name="CellCorridor" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 2.3, 1)
+light_color = Color(0.75, 0.8, 0.85, 1)
+light_energy = 0.9
+omni_range = 4.5
+
+[node name="Fixture" type="MeshInstance3D" parent="Lights/CellCorridor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
+mesh = SubResource("BoxMesh_fixture")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_fixture_8")
+
+[node name="StorageCorridor" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14.5, 2.3, -7)
+light_color = Color(0.75, 0.8, 0.85, 1)
+light_energy = 0.9
+omni_range = 4.5
+
+[node name="Fixture" type="MeshInstance3D" parent="Lights/StorageCorridor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
+mesh = SubResource("BoxMesh_fixture")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_fixture_8")
+
+[node name="BlindCorridor" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 2.3, -17.5)
+light_color = Color(0.75, 0.8, 0.85, 1)
+light_energy = 0.9
+omni_range = 4.5
+
+[node name="Fixture" type="MeshInstance3D" parent="Lights/BlindCorridor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
+mesh = SubResource("BoxMesh_fixture")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_fixture_8")
+
+[node name="FrozenCorridor" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 2.3, -19.5)
+light_color = Color(0.75, 0.8, 0.85, 1)
+light_energy = 0.9
+omni_range = 4.5
+
+[node name="Fixture" type="MeshInstance3D" parent="Lights/FrozenCorridor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
+mesh = SubResource("BoxMesh_fixture")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_fixture_8")
+
+[node name="EastCorridor" type="OmniLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 2.3, -2)
+light_color = Color(0.75, 0.8, 0.85, 1)
+light_energy = 0.9
+omni_range = 4.5
+
+[node name="Fixture" type="MeshInstance3D" parent="Lights/EastCorridor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
+mesh = SubResource("BoxMesh_fixture")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_fixture_8")
 
 [node name="Doors" type="Node3D" parent="."]
 
@@ -413,6 +688,145 @@ start_open = true
 [node name="ElevatorDoor" parent="Doors" instance=ExtResource("4_r")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 1.25, -30.25)
 
+[node name="Thresholds" type="Node3D" parent="."]
+
+[node name="CellDoorA" type="MeshInstance3D" parent="Thresholds"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 0.011, 5.1)
+mesh = SubResource("BoxMesh_threshold")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_hazard")
+
+[node name="CellDoorB" type="MeshInstance3D" parent="Thresholds"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 0.011, 5.9)
+mesh = SubResource("BoxMesh_threshold")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_hazard")
+
+[node name="EastHallDoorA" type="MeshInstance3D" parent="Thresholds"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0.011, -3.4)
+mesh = SubResource("BoxMesh_threshold")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_hazard")
+
+[node name="EastHallDoorB" type="MeshInstance3D" parent="Thresholds"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0.011, -2.6)
+mesh = SubResource("BoxMesh_threshold")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_hazard")
+
+[node name="FrozenDoorA" type="MeshInstance3D" parent="Thresholds"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.011, -18.4)
+mesh = SubResource("BoxMesh_threshold")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_hazard")
+
+[node name="FrozenDoorB" type="MeshInstance3D" parent="Thresholds"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.011, -17.6)
+mesh = SubResource("BoxMesh_threshold")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_hazard")
+
+[node name="BlindDoorA" type="MeshInstance3D" parent="Thresholds"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.011, -14.4)
+mesh = SubResource("BoxMesh_threshold")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_hazard")
+
+[node name="BlindDoorB" type="MeshInstance3D" parent="Thresholds"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.011, -13.6)
+mesh = SubResource("BoxMesh_threshold")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_hazard")
+
+[node name="ElevatorDoorA" type="MeshInstance3D" parent="Thresholds"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.011, -30.65)
+mesh = SubResource("BoxMesh_threshold")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_hazard")
+
+[node name="ElevatorDoorB" type="MeshInstance3D" parent="Thresholds"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.011, -29.85)
+mesh = SubResource("BoxMesh_threshold")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_hazard")
+
+[node name="AirlockDoorA" type="MeshInstance3D" parent="Thresholds"]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 24.1, 0.011, 4.5)
+mesh = SubResource("BoxMesh_threshold")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_hazard")
+
+[node name="AirlockDoorB" type="MeshInstance3D" parent="Thresholds"]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 24.9, 0.011, 4.5)
+mesh = SubResource("BoxMesh_threshold")
+cast_shadow = 0
+surface_material_override/0 = SubResource("Material_hazard")
+
+[node name="CameraFraming" type="Node3D" parent="."]
+
+[node name="Cell" type="Area3D" parent="CameraFraming"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.0, 1.5, 10.0)
+script = ExtResource("22_r")
+focus_offset = Vector3(0, -1.5, 1)
+distance = 20.4
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CameraFraming/Cell"]
+shape = SubResource("Box_0")
+
+[node name="Storage" type="Area3D" parent="CameraFraming"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21.0, 1.5, -7.0)
+script = ExtResource("22_r")
+focus_offset = Vector3(0, -1.5, 1)
+distance = 24.8
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CameraFraming/Storage"]
+shape = SubResource("Box_1")
+
+[node name="BlindRoom" type="Area3D" parent="CameraFraming"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.0, 1.5, -7.0)
+script = ExtResource("22_r")
+focus_offset = Vector3(0, -1.5, 1)
+distance = 24.8
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CameraFraming/BlindRoom"]
+shape = SubResource("Box_1")
+
+[node name="Observation" type="Area3D" parent="CameraFraming"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0, 1.5, -25.0)
+script = ExtResource("22_r")
+focus_offset = Vector3(0, -1.5, 1)
+distance = 24.8
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CameraFraming/Observation"]
+shape = SubResource("Box_2")
+
+[node name="Elevator" type="Area3D" parent="CameraFraming"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0, 1.5, -32.75)
+script = ExtResource("22_r")
+focus_offset = Vector3(0, -1.5, 1)
+distance = 16.0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CameraFraming/Elevator"]
+shape = SubResource("Box_3")
+
+[node name="Survival" type="Area3D" parent="CameraFraming"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.0, 1.5, -10.0)
+script = ExtResource("22_r")
+focus_offset = Vector3(0, -1.5, 1)
+distance = 29.1
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CameraFraming/Survival"]
+shape = SubResource("Box_4")
+
+[node name="EastHall" type="Area3D" parent="CameraFraming"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.0, 1.5, 4.0)
+script = ExtResource("22_r")
+focus_offset = Vector3(0, -1.5, 1)
+distance = 29.1
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CameraFraming/EastHall"]
+shape = SubResource("Box_4")
+
 [node name="Zones" type="Node3D" parent="."]
 
 [node name="Outside" type="Area3D" parent="Zones"]
@@ -421,15 +835,25 @@ script = ExtResource("11_r")
 warmth_rate = -1.4
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/Outside"]
-shape = SubResource("Box_0")
+shape = SubResource("Box_5")
 
 [node name="Whiteout" type="Area3D" parent="Zones"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 53, 1.5, 0)
-script = ExtResource("20_r")
+script = ExtResource("21_r")
 environment = SubResource("Environment_whiteout")
+ambience = "amb_whiteout"
+footsteps = "step_snow"
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/Whiteout"]
-shape = SubResource("Box_0")
+shape = SubResource("Box_5")
+
+[node name="ObservationLab" type="Area3D" parent="Zones"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -25)
+script = ExtResource("21_r")
+ambience = "amb_lab"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/ObservationLab"]
+shape = SubResource("Box_6")
 
 [node name="Airlock" type="Area3D" parent="Zones"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 1.5, 4.5)
@@ -437,7 +861,7 @@ script = ExtResource("11_r")
 warmth_rate = -2.5
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/Airlock"]
-shape = SubResource("Box_1")
+shape = SubResource("Box_7")
 
 [node name="EastHallCold" type="Area3D" parent="Zones"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 1.5, 4)
@@ -445,7 +869,7 @@ script = ExtResource("11_r")
 warmth_rate = -1.5
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/EastHallCold"]
-shape = SubResource("Box_2")
+shape = SubResource("Box_4")
 
 [node name="EastHallHeat" type="Area3D" parent="Zones"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 1.5, 4)
@@ -454,7 +878,7 @@ warmth_rate = 6.0
 active = false
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/EastHallHeat"]
-shape = SubResource("Box_2")
+shape = SubResource("Box_4")
 
 [node name="EastHallSpaceHeater" type="Area3D" parent="Zones"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 1.5, 8.8)
@@ -462,7 +886,7 @@ script = ExtResource("11_r")
 warmth_rate = 8.0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/EastHallSpaceHeater"]
-shape = SubResource("Sphere_3")
+shape = SubResource("Sphere_8")
 
 [node name="SurvivalCold" type="Area3D" parent="Zones"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 1.5, -10)
@@ -470,48 +894,48 @@ script = ExtResource("11_r")
 warmth_rate = -1.0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/SurvivalCold"]
-shape = SubResource("Box_2")
+shape = SubResource("Box_4")
 
 [node name="Perimeter" type="Node3D" parent="."]
 
 [node name="Post0" type="Node3D" parent="Perimeter"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 70, 0, -16)
-script = ExtResource("17_r")
+script = ExtResource("18_r")
 symbol = 0
 
 [node name="Post1" type="Node3D" parent="Perimeter"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 62, 0, -21)
-script = ExtResource("17_r")
+script = ExtResource("18_r")
 symbol = 1
 
 [node name="Post2" type="Node3D" parent="Perimeter"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 63, 0, -9)
-script = ExtResource("17_r")
+script = ExtResource("18_r")
 symbol = 2
 
 [node name="Post3" type="Node3D" parent="Perimeter"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 54, 0, -13)
-script = ExtResource("17_r")
+script = ExtResource("18_r")
 symbol = 3
 
 [node name="Post4" type="Node3D" parent="Perimeter"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 0, -1)
-script = ExtResource("17_r")
+script = ExtResource("18_r")
 symbol = 4
 
 [node name="Post5" type="Node3D" parent="Perimeter"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 46, 0, -5)
-script = ExtResource("17_r")
+script = ExtResource("18_r")
 symbol = 5
 
 [node name="Post6" type="Node3D" parent="Perimeter"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44, 0, 7)
-script = ExtResource("17_r")
+script = ExtResource("18_r")
 symbol = 6
 
 [node name="Post7" type="Node3D" parent="Perimeter"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35, 0, 3)
-script = ExtResource("17_r")
+script = ExtResource("18_r")
 symbol = 7
 
 [node name="PerimeterKeypad" parent="." instance=ExtResource("2_r")]
@@ -520,19 +944,19 @@ screen_text = "PERIMETER LIGHTS"
 prompt = "Use light switchboard"
 
 [node name="PerimeterNetwork" type="Node" parent="." node_paths=PackedStringArray("keypad", "lamps")]
-script = ExtResource("18_r")
+script = ExtResource("19_r")
 keypad = NodePath("../PerimeterKeypad")
 lamps = [NodePath("../Perimeter/Post0"), NodePath("../Perimeter/Post1"), NodePath("../Perimeter/Post2"), NodePath("../Perimeter/Post3"), NodePath("../Perimeter/Post4"), NodePath("../Perimeter/Post5"), NodePath("../Perimeter/Post6"), NodePath("../Perimeter/Post7")]
 
 [node name="PerimeterScreen" type="Area3D" parent="." node_paths=PackedStringArray("view_point")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -26, 0, 8)
-script = ExtResource("15_r")
+script = ExtResource("16_r")
 prompt = "Read perimeter map"
 view_point = NodePath("ViewPoint")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="PerimeterScreen"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0.6)
-shape = SubResource("Box_4")
+shape = SubResource("Box_9")
 
 [node name="Frame" type="MeshInstance3D" parent="PerimeterScreen"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0.04)
@@ -540,7 +964,7 @@ mesh = SubResource("BoxMesh_square_frame")
 surface_material_override/0 = SubResource("Material_frame")
 
 [node name="Map" type="Node3D" parent="PerimeterScreen" node_paths=PackedStringArray("network")]
-script = ExtResource("19_r")
+script = ExtResource("20_r")
 network = NodePath("../../PerimeterNetwork")
 walls = Array[Rect2]([Rect2(66.25, -30, 1.5, 18), Rect2(66.25, -8, 1.5, 38), Rect2(57.25, -30, 1.5, 26.5), Rect2(57.25, 0.5, 1.5, 29.5), Rect2(48.25, -30, 1.5, 35), Rect2(48.25, 9, 1.5, 21), Rect2(39.25, -30, 1.5, 31), Rect2(39.25, 5, 1.5, 25), Rect2(26, -31.5, 54, 1.5), Rect2(26, 30, 54, 1.5), Rect2(80, -31.5, 1.5, 63.0), Rect2(24.5, 15, 1.5, 16.5)])
 
@@ -562,7 +986,7 @@ activate = [NodePath("../Lights/EastHallPower"), NodePath("../Zones/EastHallHeat
 solved_lines = Array[String](["power_restored"])
 
 [node name="WallCode" type="Node3D" parent="."]
-script = ExtResource("14_r")
+script = ExtResource("15_r")
 
 [node name="Slot1" type="Marker3D" parent="WallCode"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.5, 2.52, -7)
@@ -609,6 +1033,15 @@ transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 16, 0, 10)
 [node name="SaveSurvival" parent="." instance=ExtResource("7_r")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 10, 0, -4)
 
+[node name="BoxStorage" parent="." instance=ExtResource("13_r")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24.5, 0, -12)
+
+[node name="BoxEastHall" parent="." instance=ExtResource("13_r")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 13.5, 0, 10)
+
+[node name="BoxSurvival" parent="." instance=ExtResource("13_r")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 12, 0, -4)
+
 [node name="Pod" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 1.2, 13.2)
 mesh = SubResource("BoxMesh_pod")
@@ -625,14 +1058,14 @@ transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 1.6, -34.3)
 
 [node name="FrozenBody" type="Area3D" parent="." node_paths=PackedStringArray("view_point")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, -26)
-script = ExtResource("15_r")
+script = ExtResource("16_r")
 prompt = "Examine"
 view_point = NodePath("ViewPoint")
 line_id = "frozen_body"
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="FrozenBody"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
-shape = SubResource("Box_5")
+shape = SubResource("Box_10")
 
 [node name="Ice" type="MeshInstance3D" parent="FrozenBody"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
@@ -649,14 +1082,14 @@ transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 
 
 [node name="MapScreen" type="Area3D" parent="." node_paths=PackedStringArray("view_point")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, -30)
-script = ExtResource("15_r")
+script = ExtResource("16_r")
 prompt = "Look at the monitor"
 view_point = NodePath("ViewPoint")
 line_id = "map_monitor"
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="MapScreen"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0.6)
-shape = SubResource("Box_4")
+shape = SubResource("Box_9")
 
 [node name="Frame" type="MeshInstance3D" parent="MapScreen"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0.04)
@@ -664,7 +1097,7 @@ mesh = SubResource("BoxMesh_frame")
 surface_material_override/0 = SubResource("Material_frame")
 
 [node name="Map" type="Node3D" parent="MapScreen"]
-script = ExtResource("16_r")
+script = ExtResource("17_r")
 rooms = Array[Rect2]([Rect2(-26, 6, 8, 8), Rect2(-26, -12, 10, 10), Rect2(-13, -12, 10, 10), Rect2(-10, -30, 20, 10), Rect2(-2.5, -35, 5.0, 4.5), Rect2(8, -16, 12, 12), Rect2(6, -2, 12, 12), Rect2(-21.5, -2.5, 3.0, 9.0), Rect2(-16.5, -8.5, 4.0, 3.0), Rect2(-9.5, -20.5, 3.0, 9.0), Rect2(6.5, -20.5, 3.0, 5.0), Rect2(13.5, -4.5, 3.0, 3.0), Rect2(17.5, 3, 9.0, 3), Rect2(-1.5, -31, 3.0, 1.5)])
 
 [node name="ViewPoint" type="Marker3D" parent="MapScreen"]
@@ -695,7 +1128,7 @@ cutaway = NodePath("../../PodView")
 cutaway_time = 3.5
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Story/Wake"]
-shape = SubResource("Box_6")
+shape = SubResource("Box_11")
 
 [node name="CellMonitor" type="Area3D" parent="Story"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24.5, 1, 7.5)
@@ -704,7 +1137,7 @@ line_ids = Array[String](["cell_monitor"])
 who = 2
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Story/CellMonitor"]
-shape = SubResource("Box_7")
+shape = SubResource("Box_12")
 
 [node name="AirlockSeal" type="Area3D" parent="Story" node_paths=PackedStringArray("cutaway", "close_doors")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.5, 1, 4.5)
@@ -716,7 +1149,7 @@ cutaway_time = 2.5
 close_doors = [NodePath("../../Doors/AirlockDoor")]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Story/AirlockSeal"]
-shape = SubResource("Box_8")
+shape = SubResource("Box_13")
 
 [node name="PowerKeypad" type="Area3D" parent="Story"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 1, -0.5)
@@ -725,7 +1158,7 @@ line_ids = Array[String](["keypad1"])
 who = 3
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Story/PowerKeypad"]
-shape = SubResource("Box_7")
+shape = SubResource("Box_12")
 
 [node name="SurvivalEntry" type="Area3D" parent="Story"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 1, -6)
@@ -734,7 +1167,7 @@ line_ids = Array[String](["survival_enemy"])
 who = 3
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Story/SurvivalEntry"]
-shape = SubResource("Box_7")
+shape = SubResource("Box_12")
 
 [node name="FrozenDoor" type="Area3D" parent="Story"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 1, -14.5)
@@ -743,7 +1176,7 @@ line_ids = Array[String](["frozen_door"])
 who = 3
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Story/FrozenDoor"]
-shape = SubResource("Box_9")
+shape = SubResource("Box_14")
 
 [node name="Storage" type="Area3D" parent="Story"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 1, -3.5)
@@ -752,7 +1185,7 @@ line_ids = Array[String](["storage"])
 who = 2
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Story/Storage"]
-shape = SubResource("Box_7")
+shape = SubResource("Box_12")
 
 [node name="BlindRoom" type="Area3D" parent="Story"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.5, 1, -7)
@@ -761,7 +1194,7 @@ line_ids = Array[String](["p3_room"])
 who = 2
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Story/BlindRoom"]
-shape = SubResource("Box_8")
+shape = SubResource("Box_13")
 
 [node name="Reunion" type="Area3D" parent="Story" node_paths=PackedStringArray("open_doors")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -25)
@@ -773,7 +1206,7 @@ cutaway_time = 3.0
 open_doors = [NodePath("../../Doors/ElevatorDoor")]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Story/Reunion"]
-shape = SubResource("Box_10")
+shape = SubResource("Box_6")
 
 [node name="ElevatorRide" type="Area3D" parent="Story" node_paths=PackedStringArray("cutaway", "close_doors")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -32.75)
@@ -786,7 +1219,7 @@ close_doors = [NodePath("../../Doors/ElevatorDoor")]
 ends_chapter = true
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Story/ElevatorRide"]
-shape = SubResource("Box_11")
+shape = SubResource("Box_15")
 
 [node name="Placements" type="Node3D" parent="."]
 process_mode = 4

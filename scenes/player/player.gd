@@ -16,6 +16,13 @@ extends CharacterBody3D
 const WALK_SPEED := 4.0
 const AIM_SPEED := 1.5
 const TURN_SPEED := 12.0
+## How quickly the top-down camera glides to its target (player, or a room's framing).
+const CAMERA_FOLLOW := 5.0
+## Farther than this and the camera cuts instead of gliding (respawn, room-to-room teleport).
+const CAMERA_SNAP_DISTANCE := 12.0
+## The top-down camera looks down 60 degrees from this far away (CameraZones can pull it back).
+const CAMERA_DISTANCE := 18.0
+const CAMERA_DIRECTION := Vector3(0, 0.866025, 0.5)
 const CUT_FADE_TIME := 0.12
 const SUBJECT_COLOR := Color(0.78, 0.8, 0.82)
 const VISITOR_COLOR := Color(0.9, 0.5, 0.25)
@@ -30,6 +37,9 @@ const RESPAWN_DELAY := 1.5
 const MAX_WARMTH := 100.0
 const FREEZING_DAMAGE_PER_SECOND := 4.0
 const NORMAL_BODY_TEMPERATURE := 36.6
+## Metres walked per footstep sound.
+const STRIDE := 1.7
+const ZONE_LAYER := 32 # physics layer 6, "zones"
 const FROZEN_BODY_TEMPERATURE := 29.0
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
@@ -42,7 +52,10 @@ var is_aiming := false
 
 # Only meaningful on the owning peer.
 var inventory := Inventory.new()
-var selected_slot := 0
+## The weapon in hand ("" for none). Only an equipped weapon can be raised and fired.
+var equipped := ""
+## Personal storage, opened from any item box.
+var stash := Inventory.new(ItemBox.STASH_SLOTS)
 var loaded_rounds := 0
 var checkpoint := Vector3.ZERO
 var warmth := MAX_WARMTH
@@ -56,6 +69,10 @@ var _in_cutaway := false
 var _reloading := false
 var _fire_cooldown := 0.0
 var _tracer_material := StandardMaterial3D.new()
+var _last_position := Vector3.ZERO
+var _listener := AudioListener3D.new()
+var _camera_distance := CAMERA_DISTANCE
+var _stride_left := STRIDE
 
 @onready var body_mesh: MeshInstance3D = $Body
 @onready var nose: MeshInstance3D = $Nose
@@ -69,6 +86,7 @@ var _tracer_material := StandardMaterial3D.new()
 @onready var third_person_camera: Camera3D = $CameraRig/ThirdPersonCamera
 @onready var overlay: CanvasLayer = $CameraRig/Overlay
 @onready var hud: PlayerHud = $CameraRig/Overlay/Hud
+@onready var inventory_screen: InventoryScreen = $CameraRig/Overlay/InventoryScreen
 @onready var hurt_flash: ColorRect = $CameraRig/Overlay/HurtFlash
 @onready var fade: ColorRect = $CameraRig/Overlay/Fade
 @onready var first_person_camera: Camera3D = $FirstPersonCamera
@@ -96,6 +114,11 @@ func _ready() -> void:
 		# so they stay sharp. They are no longer our children, so _exit_tree frees them.
 		overlay.reparent(get_tree().root, false)
 		third_person_camera.make_current()
+		# Hear the world from the character (not the camera, which may be framing a room),
+		# oriented like the screen: up = north.
+		_listener.top_level = true
+		add_child(_listener)
+		_listener.make_current()
 		checkpoint = global_position
 		inventory.changed.connect(_refresh_hud)
 		_refresh_hud()
@@ -106,24 +129,28 @@ func _ready() -> void:
 		camera_rig.queue_free()
 		interaction_area.queue_free()
 		zone_probe.queue_free()
+		_listener.free() # never entered the tree; only the local player listens
 
 
 func _exit_tree() -> void:
 	if is_multiplayer_authority() and is_instance_valid(overlay) and overlay.get_parent() == get_tree().root:
 		overlay.queue_free()
+		Retro.set_condition(0.0, 0.0)
 
 
 func _apply_role() -> void:
 	role = Session.role_of(name.to_int())
 	feels_cold = role == Session.Role.VISITOR
 	nameplate.text = Session.ROLE_NAMES[role]
+	# Only your partner's name floats over them; you know who you are.
+	nameplate.visible = not is_multiplayer_authority()
 	var material := StandardMaterial3D.new()
 	material.albedo_color = SUBJECT_COLOR if role == Session.Role.SUBJECT else VISITOR_COLOR
 	body_mesh.material_override = material
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _cutting or _in_cutaway or is_dead:
+	if _cutting or _in_cutaway or is_dead or inventory_screen.visible or _pause_menu_open():
 		return
 	if focus:
 		if event.is_action_pressed("interact") or event.is_action_pressed("ui_cancel"):
@@ -140,19 +167,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		_try_fire()
 	elif event.is_action_pressed("reload"):
 		_reload()
-	elif event.is_action_pressed("use_item"):
-		_use_selected_item()
-	elif event.is_action_pressed("slot_next"):
-		_select_slot(selected_slot + 1)
-	elif event.is_action_pressed("slot_prev"):
-		_select_slot(selected_slot - 1)
-	else:
-		for i in Inventory.SLOT_COUNT:
-			if event.is_action_pressed("slot_%d" % (i + 1)):
-				_select_slot(i)
+	elif event.is_action_pressed("inventory"):
+		get_viewport().set_input_as_handled()
+		open_inventory()
 
 
 func _process(_delta: float) -> void:
+	_update_footsteps()
 	# Runs on every peer so the partner sees your laser too.
 	laser.visible = is_aiming
 	if is_aiming:
@@ -168,9 +189,13 @@ func _physics_process(delta: float) -> void:
 		velocity.y -= gravity * delta
 	_fire_cooldown = maxf(_fire_cooldown - delta, 0.0)
 
-	var frozen := focus != null or _cutting or _in_cutaway or is_dead
+	var frozen := (focus != null or _cutting or _in_cutaway or is_dead or inventory_screen.visible
+			or _pause_menu_open())
 	var input := Vector2.ZERO if frozen else Input.get_vector("move_left", "move_right", "move_forward", "move_back")
-	is_aiming = not frozen and Input.is_action_pressed("aim") and inventory.has("pistol")
+	is_aiming = not frozen and Input.is_action_pressed("aim") and equipped != "" and inventory.has(equipped)
+	hud.set_ammo(is_aiming, "%s  %d / %d" % [Items.display_name(equipped).to_upper(), loaded_rounds,
+			inventory.count_of("ammo")] if is_aiming else "")
+	_update_condition()
 	var speed := AIM_SPEED if is_aiming else WALK_SPEED
 	# The top-down camera never rotates, so screen-up is always world -Z.
 	var direction := Vector3(input.x, 0.0, input.y)
@@ -183,13 +208,33 @@ func _physics_process(delta: float) -> void:
 		var target_yaw := atan2(-look_direction.x, -look_direction.z)
 		rotation.y = lerp_angle(rotation.y, target_yaw, TURN_SPEED * delta)
 
-	camera_rig.global_position = global_position
+	_update_camera(delta)
 	_update_warmth(delta)
 	_update_environment()
 	_update_prompt()
 
 
 # --- Interaction & perspective ---------------------------------------------
+
+## The top-down camera follows the player, except inside a CameraZone, where it holds that
+## room's framing (Signalis-style fixed compositions).
+func _update_camera(delta: float) -> void:
+	var target := global_position
+	var distance := CAMERA_DISTANCE
+	for area in zone_probe.get_overlapping_areas():
+		if area is CameraZone:
+			target = area.focus_point()
+			distance = area.distance
+	var blend := 1.0 - exp(-CAMERA_FOLLOW * delta)
+	if camera_rig.global_position.distance_to(target) > CAMERA_SNAP_DISTANCE:
+		camera_rig.global_position = target
+		_camera_distance = distance
+	else:
+		camera_rig.global_position = camera_rig.global_position.lerp(target, blend)
+		_camera_distance = lerpf(_camera_distance, distance, blend)
+	third_person_camera.position = CAMERA_DIRECTION * _camera_distance
+	_listener.global_position = global_position + Vector3.UP * 1.5
+
 
 func _use(target: Interactable) -> void:
 	if target.view_point:
@@ -252,7 +297,6 @@ func _view_third_person() -> void:
 func _set_own_body_visible(shown: bool) -> void:
 	body_mesh.visible = shown
 	nose.visible = shown
-	nameplate.visible = shown
 
 
 ## Hard cut through black, Signalis-style: fade out, `swap`, fade in.
@@ -280,6 +324,9 @@ func _find_interactable() -> Interactable:
 
 
 func _update_prompt() -> void:
+	if inventory_screen.visible:
+		hud.set_prompt("")
+		return
 	if focus:
 		hud.set_prompt("[E / Esc] Step back")
 		return
@@ -304,7 +351,7 @@ func _get_aim_direction() -> Vector3:
 
 func request_pickup(pickup: Pickup) -> void:
 	if inventory.space_for(pickup.item_id) < pickup.count:
-		hud.show_message("Inventory full")
+		notify("Inventory full")
 		return
 	_request_pickup.rpc_id(1, pickup.get_path())
 
@@ -325,55 +372,178 @@ func _receive_item(id: String, count: int) -> void:
 	if multiplayer.get_remote_sender_id() != 1:
 		return
 	var leftover := inventory.add(id, count)
+	Sound.play_ui("pickup")
 	if leftover > 0:
 		push_warning("Inventory overflowed by %d %s" % [leftover, id])
-	hud.show_message("Took %s" % Items.display_name(id))
+	notify("Took %s" % Items.display_name(id))
 
 
-func send_through_tube(tube: ItemTube) -> void:
-	var slot := inventory.slots[selected_slot]
-	if slot.is_empty():
-		hud.show_message("Select an item to send first")
+## Opens the ZP-SYS terminal: plain (Tab), on an item box's stash, or on a tube to send from.
+func open_inventory(target: Variant = null) -> void:
+	if focus or _cutting or _in_cutaway or is_dead or inventory_screen.visible:
 		return
-	inventory.take_slot(selected_slot)
+	inventory_screen.open(self, target)
+
+
+func close_inventory() -> void:
+	inventory_screen.close()
+
+
+func send_slot_through_tube(index: int, tube: ItemTube) -> void:
+	var slot := inventory.take_slot(index)
+	if slot.is_empty():
+		return
 	tube.request_send.rpc_id(1, slot["id"], slot["count"])
-	if slot["id"] == "pistol" and loaded_rounds > 0:
-		# Whatever was loaded goes along with the gun.
-		tube.request_send.rpc_id(1, "ammo", loaded_rounds)
-		loaded_rounds = 0
-		_refresh_hud()
-	hud.show_message("Sent %s" % Items.display_name(slot["id"]))
+	if slot["id"] == "pistol":
+		_unload_into(func(count: int) -> void: tube.request_send.rpc_id(1, "ammo", count))
+	notify("Sent %s" % Items.display_name(slot["id"]))
 
 
-func set_checkpoint(point: Vector3) -> void:
-	checkpoint = point
-	hud.show_message("Checkpoint saved")
-
-
-func _select_slot(index: int) -> void:
-	selected_slot = posmod(index, Inventory.SLOT_COUNT)
-	_refresh_hud()
-
-
-func _use_selected_item() -> void:
-	var slot := inventory.slots[selected_slot]
+## Terminal "Use": med kits heal, rounds reload the equipped weapon.
+func use_slot(index: int) -> void:
+	var slot := inventory.slots[index]
 	if slot.is_empty():
 		return
 	match slot["id"]:
 		"medkit":
 			if health >= MAX_HEALTH:
-				hud.show_message("Already at full health")
+				notify("Already at full health")
 				return
-			inventory.remove("medkit", 1)
+			inventory.remove_from(index, 1)
 			health = mini(health + Items.get_value("medkit", "heal", 50), MAX_HEALTH)
-			hud.show_message("Patched up")
-			_refresh_hud()
+			Sound.play_ui("pickup", -6.0, 0.7)
+			notify("Patched up")
 		"ammo":
 			_reload()
+		_:
+			notify("Can't use that here")
+	_refresh_hud()
+
+
+func equip_slot(index: int) -> void:
+	var slot := inventory.slots[index]
+	if slot.is_empty() or Items.kind(slot["id"]) != "weapon":
+		return
+	equipped = "" if equipped == slot["id"] else String(slot["id"])
+	Sound.play_ui("reload", -8.0, 1.3)
+	notify("Equipped %s" % Items.display_name(equipped) if equipped else "Unequipped")
+	_refresh_hud()
+
+
+## Terminal "Combine": rounds + pistol loads it; two stacks of the same item merge.
+func combine_slots(a: int, b: int) -> void:
+	var first := inventory.slots[a]
+	var second := inventory.slots[b]
+	if a == b or first.is_empty() or second.is_empty():
+		return
+	match Items.combination(first["id"], second["id"]):
+		"load":
+			var needed: int = Items.get_value("pistol", "magazine", MAGAZINE_SIZE) - loaded_rounds
+			if needed <= 0:
+				notify("Already fully loaded")
+				return
+			loaded_rounds += inventory.remove_from(a if first["id"] == "ammo" else b, needed)
+			Sound.play_ui("reload")
+			notify("Loaded")
+		"merge":
+			var moved := mini(first["count"], Items.max_stack(second["id"]) - second["count"])
+			if moved <= 0:
+				notify("No room to combine")
+				return
+			second["count"] += moved
+			inventory.remove_from(a, moved)
+		_:
+			notify("Those don't go together")
+	_refresh_hud()
+
+
+## Terminal "Drop": the item lands at your feet for anyone (your partner) to pick up.
+func drop_slot(index: int) -> void:
+	var slot := inventory.take_slot(index)
+	if slot.is_empty():
+		return
+	var at := global_position - global_basis.z * 0.7
+	_request_drop.rpc_id(1, slot["id"], slot["count"], at)
+	if slot["id"] == "pistol":
+		_unload_into(func(count: int) -> void: _request_drop.rpc_id(1, "ammo", count, at + Vector3(0.4, 0, 0)))
+	notify("Dropped %s" % Items.display_name(slot["id"]))
+
+
+@rpc("any_peer", "call_local", "reliable")
+func _request_drop(id: String, count: int, at: Vector3) -> void:
+	if not multiplayer.is_server() or multiplayer.get_remote_sender_id() != get_multiplayer_authority():
+		return
+	if not Items.exists(id) or count <= 0:
+		return
+	var level := get_tree().get_first_node_in_group("level") as Level
+	level.spawn_world_object(ItemTube.PICKUP_SCENE, Transform3D(Basis(), at), {"item_id": id, "count": count})
+
+
+## Item box: move a carried slot into the stash.
+func store_slot(index: int, box: Inventory) -> void:
+	var slot := inventory.slots[index]
+	if slot.is_empty():
+		return
+	if box.space_for(slot["id"]) < slot["count"]:
+		notify("The box is full")
+		return
+	inventory.take_slot(index)
+	box.add(slot["id"], slot["count"])
+	if slot["id"] == "pistol":
+		_unload_into(func(count: int) -> void: box.add("ammo", count))
+
+
+## Item box: move a stash slot back into your hands.
+func take_from_box(index: int, box: Inventory) -> void:
+	var slot := box.slots[index]
+	if slot.is_empty():
+		return
+	if inventory.space_for(slot["id"]) < slot["count"]:
+		notify("No room to carry that")
+		return
+	box.take_slot(index)
+	inventory.add(slot["id"], slot["count"])
+
+
+## When the gun leaves your hands, its loaded rounds go with it (as loose rounds).
+func _unload_into(put: Callable) -> void:
+	if equipped == "pistol":
+		equipped = ""
+	if loaded_rounds > 0:
+		put.call(loaded_rounds)
+		loaded_rounds = 0
+	_refresh_hud()
+
+
+func set_checkpoint(point: Vector3) -> void:
+	checkpoint = point
+	notify("Checkpoint saved")
+
+
+## A short message for this player: on the terminal's hint line while it's open, else on the HUD.
+func notify(text: String) -> void:
+	if inventory_screen.visible:
+		inventory_screen.show_notice(text)
+	else:
+		hud.show_message(text)
+
+
+func _pause_menu_open() -> bool:
+	var main := get_tree().get_first_node_in_group("main")
+	return main != null and main.menu_open
 
 
 func _refresh_hud() -> void:
-	hud.refresh(self)
+	if equipped and not inventory.has(equipped):
+		equipped = ""
+	inventory_screen.refresh()
+
+
+## Damage and cold show on screen (red / frost vignettes), not as bars.
+func _update_condition() -> void:
+	var hurt := clampf((0.66 - float(health) / MAX_HEALTH) / 0.66, 0.0, 1.0)
+	var cold := clampf((0.6 - warmth / MAX_WARMTH) / 0.6, 0.0, 1.0) if feels_cold else 0.0
+	Retro.set_condition(hurt, cold)
 
 
 # --- Combat ------------------------------------------------------------------
@@ -382,7 +552,8 @@ func _try_fire() -> void:
 	if _fire_cooldown > 0.0 or _reloading:
 		return
 	if loaded_rounds == 0:
-		hud.show_message("Empty  [R] reload")
+		notify("Empty  [R] reload")
+		Sound.play_ui("gun_empty")
 		return
 	loaded_rounds -= 1
 	_fire_cooldown = FIRE_COOLDOWN
@@ -394,10 +565,11 @@ func _reload() -> void:
 	if _reloading or loaded_rounds == MAGAZINE_SIZE or not inventory.has("pistol"):
 		return
 	if not inventory.has("ammo"):
-		hud.show_message("No ammo")
+		notify("No ammo")
 		return
 	_reloading = true
-	hud.show_message("Reloading...")
+	Sound.play_ui("reload")
+	notify("Reloading...")
 	get_tree().create_timer(RELOAD_TIME).timeout.connect(_finish_reload)
 
 
@@ -427,8 +599,12 @@ func _request_shot(origin: Vector3, direction: Vector3) -> void:
 
 @rpc("any_peer", "call_local", "unreliable")
 func _show_shot(from: Vector3, to: Vector3) -> void:
-	if multiplayer.get_remote_sender_id() != 1 or from.distance_to(to) < 0.05:
+	if multiplayer.get_remote_sender_id() != 1:
 		return
+	# Loud and far-reaching: the partner hears your fights, muffled, from other rooms.
+	Sound.play_at("gunshot", from, 8.0, 60.0)
+	if from.distance_to(to) < 0.05:
+		return # point-blank: nothing to draw
 	var tracer := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
 	mesh.size = Vector3(0.03, 0.03, from.distance_to(to))
@@ -453,6 +629,7 @@ func _hurt(amount: int) -> void:
 		return
 	health = maxi(health - amount, 0)
 	_refresh_hud()
+	Sound.play_ui("hurt")
 	var tween := create_tween()
 	hurt_flash.color.a = 0.45
 	tween.tween_property(hurt_flash, "color:a", 0.0, 0.4)
@@ -462,11 +639,14 @@ func _hurt(amount: int) -> void:
 
 func _die() -> void:
 	is_dead = true
+	Sound.play_ui("death")
+	if inventory_screen.visible:
+		inventory_screen.close()
 	MetaSave.record("deaths")
 	if focus:
 		focus.has_local_focus = false
 		focus = null
-	hud.show_message("You died")
+	notify("You died")
 	var tween := create_tween()
 	tween.tween_property(fade, "color:a", 1.0, 0.6)
 	tween.tween_interval(RESPAWN_DELAY)
@@ -489,14 +669,49 @@ func _respawn() -> void:
 # --- Cold --------------------------------------------------------------------
 
 ## Applies the look of the EnvironmentZone we stand in (e.g. the whiteout), if any.
+## Applies the look and sound of the EnvironmentZone we stand in (e.g. the whiteout).
 func _update_environment() -> void:
 	var environment: Environment = null
+	var level := get_tree().get_first_node_in_group("level") as Level
+	var ambience := level.ambience if level else ""
 	for area in zone_probe.get_overlapping_areas():
 		if area is EnvironmentZone:
-			environment = area.environment
+			if area.environment:
+				environment = area.environment
+			if area.ambience:
+				ambience = area.ambience
 	if third_person_camera.environment != environment:
 		third_person_camera.environment = environment
 		first_person_camera.environment = environment
+	Sound.set_ambience(ambience)
+
+
+## Footsteps for every player on every machine, from distance moved (remote players
+## are moved by the synchronizer, so velocity isn't available for them).
+func _update_footsteps() -> void:
+	var moved := Vector2(global_position.x - _last_position.x, global_position.z - _last_position.z).length()
+	_last_position = global_position
+	if moved > 1.0: # a teleport (respawn), not a step
+		return
+	_stride_left -= moved
+	if _stride_left <= 0.0:
+		_stride_left = STRIDE
+		var local := is_multiplayer_authority()
+		# Soft, like Signalis: steps sit under the bed instead of ticking over it.
+		Sound.play_at(_surface_footsteps(), global_position, -16.0 if local else -12.0, 18.0, 0.12)
+
+
+func _surface_footsteps() -> String:
+	var query := PhysicsPointQueryParameters3D.new()
+	query.position = global_position + Vector3.UP * 0.5
+	query.collision_mask = ZONE_LAYER
+	query.collide_with_areas = true
+	query.collide_with_bodies = false
+	for hit in get_world_3d().direct_space_state.intersect_point(query):
+		if hit["collider"] is EnvironmentZone and hit["collider"].footsteps:
+			return hit["collider"].footsteps
+	var level := get_tree().get_first_node_in_group("level") as Level
+	return level.footsteps if level else "step_metal"
 
 
 ## What the HUD shows. The Subject's reading never moves.

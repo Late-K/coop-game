@@ -1,0 +1,33 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scenes/props/item_box.gd" id="1_box"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_reach"]
+size = Vector3(1.4, 2, 1.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_crate"]
+size = Vector3(1.2, 0.7, 0.6)
+
+[sub_resource type="StandardMaterial3D" id="Material_crate"]
+albedo_color = Color(0.22, 0.27, 0.26, 1)
+metallic = 0.4
+
+[sub_resource type="BoxMesh" id="BoxMesh_band"]
+size = Vector3(1.22, 0.06, 0.62)
+
+[node name="ItemBox" type="Area3D"]
+script = ExtResource("1_box")
+prompt = "Open item box"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0.6)
+shape = SubResource("BoxShape3D_reach")
+
+[node name="Crate" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, 0.3)
+mesh = SubResource("BoxMesh_crate")
+surface_material_override/0 = SubResource("Material_crate")
+
+[node name="Band" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0.3)
+mesh = SubResource("BoxMesh_band")

@@ -1,7 +1,8 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scenes/player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scenes/ui/player_hud.gd" id="2_hud"]
+[ext_resource type="Script" path="res://scenes/ui/inventory_screen.gd" id="3_inventory"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
@@ -99,6 +100,12 @@ cast_shadow = 0
 target_position = Vector3(0, 0, -25)
 collision_mask = 11
 
+[node name="Glow" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
+light_color = Color(0.9, 0.85, 0.8, 1)
+light_energy = 0.35
+omni_range = 2.2
+
 [node name="FirstPersonCamera" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
 
@@ -106,8 +113,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
 top_level = true
 
 [node name="ThirdPersonCamera" type="Camera3D" parent="CameraRig"]
-transform = Transform3D(1, 0, 0, 0, 0.573576, 0.819152, 0, -0.819152, 0.573576, 0, 9, 6.3)
-fov = 50.0
+transform = Transform3D(1, 0, 0, 0, 0.5, 0.866025, 0, -0.866025, 0.5, 0, 15.6, 9)
+cull_mask = 1048573
+fov = 32.0
+far = 80.0
 
 [node name="Overlay" type="CanvasLayer" parent="CameraRig"]
 
@@ -119,6 +128,14 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("2_hud")
+
+[node name="InventoryScreen" type="Control" parent="CameraRig/Overlay"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("3_inventory")
 
 [node name="HurtFlash" type="ColorRect" parent="CameraRig/Overlay"]
 anchors_preset = 15

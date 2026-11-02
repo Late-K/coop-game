@@ -1,6 +1,7 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scenes/props/door.gd" id="1_door"]
+[ext_resource type="Texture2D" path="res://textures/door_panel.png" id="2_panel"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_door"]
 size = Vector3(0.3, 2.5, 3)
@@ -9,7 +10,13 @@ size = Vector3(0.3, 2.5, 3)
 size = Vector3(0.3, 2.5, 3)
 
 [sub_resource type="StandardMaterial3D" id="Material_door"]
-albedo_color = Color(0.55, 0.42, 0.12, 1)
+albedo_color = Color(0.16, 0.09, 0.08, 1)
+
+[sub_resource type="QuadMesh" id="QuadMesh_face"]
+size = Vector2(3, 2.5)
+
+[sub_resource type="StandardMaterial3D" id="Material_face"]
+albedo_texture = ExtResource("2_panel")
 
 [node name="Door" type="AnimatableBody3D"]
 input_ray_pickable = false
@@ -21,3 +28,13 @@ shape = SubResource("BoxShape3D_door")
 [node name="Mesh" type="MeshInstance3D" parent="."]
 mesh = SubResource("BoxMesh_door")
 surface_material_override/0 = SubResource("Material_door")
+
+[node name="FaceA" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.152, 0, 0)
+mesh = SubResource("QuadMesh_face")
+surface_material_override/0 = SubResource("Material_face")
+
+[node name="FaceB" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -0.152, 0, 0)
+mesh = SubResource("QuadMesh_face")
+surface_material_override/0 = SubResource("Material_face")

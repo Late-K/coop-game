@@ -29,11 +29,13 @@ var state := State.IDLE:
 		state = value
 		if is_node_ready():
 			_apply_state_visuals()
+			_play_state_sound()
 
 var health := MAX_HEALTH
 var target: Player = null
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _attack_timer := 0.0
+var _growl_timer := 0.0
 var _revive_timer := 0.0
 
 @onready var body: Node3D = $Body
@@ -74,6 +76,7 @@ func take_damage(amount: int, attacker: Player) -> void:
 	if state == State.DOWNED:
 		return
 	health -= amount
+	_play_hit.rpc()
 	if state == State.IDLE and attacker:
 		target = attacker
 		state = State.CHASE
@@ -81,6 +84,30 @@ func take_damage(amount: int, attacker: Player) -> void:
 		state = State.DOWNED
 		_revive_timer = REVIVE_TIME
 		print("[enemy] %s is down" % name)
+
+
+## Runs on every peer: state is synced, so both players hear the hunt.
+func _process(delta: float) -> void:
+	if state != State.CHASE:
+		return
+	_growl_timer -= delta
+	if _growl_timer <= 0.0:
+		_growl_timer = randf_range(2.5, 5.0)
+		Sound.play_at("enemy_growl", global_position, 0.0, 25.0)
+
+
+func _play_state_sound() -> void:
+	match state:
+		State.CHASE:
+			_growl_timer = 0.0 # growl right away when it notices someone
+		State.DOWNED:
+			# A lower, slower groan as it collapses.
+			Sound.play_at("enemy_growl", global_position, -2.0, 25.0, 0.0, 0.6)
+
+
+@rpc("authority", "call_local", "unreliable")
+func _play_hit() -> void:
+	Sound.play_at("enemy_hit", global_position + Vector3.UP, 0.0, 30.0)
 
 
 func _chase(delta: float) -> void:

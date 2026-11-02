@@ -132,6 +132,15 @@ New systems this needs:
 - A small **persistent meta save.**
 - The **PS1 render pass.**
 
+## UI and inventory
+- **Nearly empty gameplay screen:** no health bar, slot strip or temperature on screen. Damage and cold show as red and frost vignettes. Ammo appears only while aiming. Prompts, messages and dialogue use one style: a black box with a thin white border, in monospace.
+- **The ZP-SYS occupant terminal (Tab)** is the inventory: a diegetic screen in the system's cold cyan. Because it is part of the facility, it is part of PROCTOR, and later chapters can glitch it, lie through it, or show each player different contents.
+  - ITEMS: status (condition ECG, body temperature, equipped weapon), six slots, item description, and actions: Use, Equip, Combine, Inspect, Drop.
+  - LOGS: every line seen this session. Lines that play while the terminal is open go here instead of on screen.
+  - The Subject's ECG is perfectly regular, like a machine. Its body temperature never changes.
+- **Mechanics:** six slots, and everything takes one. Only an equipped weapon can be aimed. Combining rounds with the pistol loads it. Dropped items can be picked up by the partner. Item boxes in save rooms open a personal stash; boxes are not shared between players, so the pneumatic tube (which also opens the terminal) stays the way to hand things over.
+- **Esc** opens a small pause menu (the game keeps running; co-op can't pause).
+
 ## Visual style
 PS1 / low-poly retro: low-res render (~480×270) upscaled with nearest filtering, vertex snapping, dithering, limited palette, heavy fog.
 

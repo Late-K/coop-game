@@ -15,34 +15,42 @@ const PICKUP_SCENE := "res://scenes/items/pickup.tscn"
 @onready var light: OmniLight3D = $Light
 
 
-func get_prompt(player: Player) -> String:
-	var slot := player.inventory.slots[player.selected_slot]
-	if slot.is_empty():
-		return "Tube (select an item to send)"
-	return "Send %s through the tube" % Items.display_name(slot["id"])
+func get_prompt(_player: Player) -> String:
+	return "Send something through the tube"
 
 
+## Opens the terminal on this tube: choosing a slot sends it.
 func interact(player: Player) -> void:
-	player.send_through_tube(self)
+	player.open_inventory(self)
+
+
+func terminal_text() -> String:
+	return "PNEUMATIC TUBE\n\nChoose an item to send to the other station.\nLoaded rounds travel with the gun."
+
+
+func use_slot_on(player: Player, index: int) -> bool:
+	player.send_slot_through_tube(index, self)
+	return true
 
 
 @rpc("any_peer", "call_local", "reliable")
 func request_send(id: String, count: int) -> void:
 	if not multiplayer.is_server() or not Items.exists(id) or count <= 0:
 		return
-	_pulse.rpc()
+	_pulse.rpc(false)
 	# Connected to a method (not awaited) so it is dropped if the level is unloaded meanwhile.
 	get_tree().create_timer(TRANSIT_TIME).timeout.connect(_arrive.bind(id, count))
 
 
 func _arrive(id: String, count: int) -> void:
-	partner._pulse.rpc()
+	partner._pulse.rpc(true)
 	var level := get_tree().get_first_node_in_group("level") as Level
 	level.spawn_world_object(PICKUP_SCENE, partner.output.global_transform, {"item_id": id, "count": count})
 
 
 @rpc("authority", "call_local", "reliable")
-func _pulse() -> void:
+func _pulse(arriving: bool) -> void:
+	Sound.play_at("tube_arrive" if arriving else "tube_send", global_position + Vector3.UP, 0.0, 20.0)
 	var tween := create_tween()
 	tween.tween_property(light, "light_energy", 3.0, 0.15)
 	tween.tween_property(light, "light_energy", 0.0, 0.8)

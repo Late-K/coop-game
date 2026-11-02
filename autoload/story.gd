@@ -33,9 +33,18 @@ const SKIP_COMMENT_AT := 3
 ## and return). Lines without a speaker are narration.
 const SPEAKER_COLORS := {"ZP-SYS": Color(0.6, 0.9, 1.0), "PROCTOR": Color(1.0, 0.42, 0.42)}
 const NARRATION_COLOR := Color(0.92, 0.92, 0.92)
+## Typing sound per voice (see Sound.blip); narration and thoughts share the soft one.
+const SPEAKER_BLIPS := {"ZP-SYS": "sys", "PROCTOR": "proctor"}
+## One blip every this many typed characters.
+const BLIP_EVERY := 3
 const THOUGHT_COLOR := Color(0.72, 0.76, 0.82)
 
 var _lines := {}
+## Every line shown this session, oldest first: {"text": String, "color": Color}. Read by the
+## terminal's LOGS tab.
+var history: Array[Dictionary] = []
+## While true (e.g. the terminal is open) lines still play and land in history, unseen.
+var suppressed := false
 ## Waiting lines: {"id": String, "beat": int}. Lines of one beat share a number.
 var _queue: Array[Dictionary] = []
 var _next_beat := 0
@@ -46,6 +55,8 @@ var _dropped := 0
 var _skipped := 0
 var _showing := false
 var _skip_requested := false
+## Lines appear in a black box with a thin white border at the bottom of the screen.
+var _box := PanelContainer.new()
 var _label := RichTextLabel.new()
 var _skip_hint := Label.new()
 var _card := Label.new()
@@ -61,31 +72,43 @@ func _ready() -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 20
 	add_child(layer)
+	var frame := StyleBoxFlat.new()
+	frame.bg_color = Color(0, 0, 0, 0.92)
+	frame.set_border_width_all(2)
+	frame.border_color = Color(0.85, 0.85, 0.85)
+	frame.content_margin_left = 18
+	frame.content_margin_right = 18
+	frame.content_margin_top = 12
+	frame.content_margin_bottom = 8
+	_box.add_theme_stylebox_override("panel", frame)
+	_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_box.anchor_left = 0.2
+	_box.anchor_right = 0.8
+	_box.anchor_top = 1.0
+	_box.anchor_bottom = 1.0
+	_box.offset_top = -215.0
+	_box.offset_bottom = -110.0
+	_box.visible = false
+	layer.add_child(_box)
+	var column := VBoxContainer.new()
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_box.add_child(column)
+
 	_label.bbcode_enabled = true
 	_label.fit_content = true
 	_label.scroll_active = false
 	_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_label.add_theme_font_size_override("normal_font_size", 20)
-	_label.anchor_left = 0.15
-	_label.anchor_right = 0.85
-	_label.anchor_top = 1.0
-	_label.anchor_bottom = 1.0
-	_label.offset_top = -195.0
-	_label.offset_bottom = -125.0
-	layer.add_child(_label)
+	_label.add_theme_font_size_override("normal_font_size", 18)
+	_label.add_theme_font_size_override("italics_font_size", 18)
+	_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(_label)
 
-	_skip_hint.text = "[Space] skip"
+	_skip_hint.text = "[Space] v"
+	_skip_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_skip_hint.add_theme_font_size_override("font_size", 12)
-	_skip_hint.modulate = Color(1, 1, 1, 0.35)
+	_skip_hint.modulate = Color(1, 1, 1, 0.4)
 	_skip_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_skip_hint.anchor_left = 0.85
-	_skip_hint.anchor_right = 0.85
-	_skip_hint.anchor_top = 1.0
-	_skip_hint.anchor_bottom = 1.0
-	_skip_hint.offset_top = -150.0
-	_skip_hint.offset_left = -80.0
-	_skip_hint.visible = false
-	layer.add_child(_skip_hint)
+	column.add_child(_skip_hint)
 
 	_card.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_card.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -123,17 +146,19 @@ func show_local(id: String) -> void:
 ## Big centred title (e.g. end of chapter) that fades in and stays until clear().
 func show_card(text: String) -> void:
 	_card.text = text
+	Sound.play_ui("sting_chapter")
 	create_tween().tween_property(_card, "modulate:a", 1.0, 1.5)
 
 
 func clear() -> void:
 	_queue.clear()
 	_played_once.clear()
+	history.clear()
 	_commented.clear()
 	_dropped = 0
 	_skipped = 0
 	_label.text = ""
-	_skip_hint.visible = false
+	_box.visible = false
 	_card.modulate.a = 0.0
 
 
@@ -198,11 +223,19 @@ func _show_queue() -> void:
 		var typing := create_tween()
 		typing.tween_property(_label, "visible_ratio", 1.0, type_time)
 		var elapsed := 0.0
+		var blipped := 0
+		var blip_voice: String = SPEAKER_BLIPS.get(line.get("speaker", ""), "thought")
+		if line.get("speaker", "") == "PROCTOR":
+			Sound.play_ui("static", -6.0)
 		_skip_requested = false
-		_skip_hint.visible = true
+		_box.visible = not suppressed
 		while elapsed < type_time + hold:
 			await get_tree().process_frame
 			elapsed += get_process_delta_time()
+			var typed := int(_label.visible_ratio * text.length())
+			if elapsed < type_time and typed - blipped >= BLIP_EVERY:
+				blipped = typed
+				Sound.blip(blip_voice)
 			if _skip_requested:
 				_skip_requested = false
 				if elapsed < type_time:
@@ -214,8 +247,9 @@ func _show_queue() -> void:
 					break
 			elif _newer_beat_waiting() and elapsed >= type_time + INTERRUPT_GRACE:
 				break
+			_box.visible = not suppressed
 	_label.text = ""
-	_skip_hint.visible = false
+	_box.visible = false
 	_showing = false
 
 
@@ -224,7 +258,9 @@ func _display(line: Dictionary, text: String) -> void:
 	var body := "[color=#%s]%s[/color]" % [SPEAKER_COLORS.get(speaker, NARRATION_COLOR).to_html(false), text]
 	if line.get("thought", false):
 		body = "[i][color=#%s]%s[/color][/i]" % [THOUGHT_COLOR.to_html(false), text]
-	_label.text = "[center]%s[/center]" % body
+	_label.text = body
+	var color: Color = THOUGHT_COLOR if line.get("thought", false) else SPEAKER_COLORS.get(speaker, NARRATION_COLOR)
+	history.append({"text": text, "color": color})
 	_label.visible_ratio = 0.0
 	print("[story] %s: %s" % [speaker, text])
 

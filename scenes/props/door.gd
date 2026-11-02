@@ -30,6 +30,7 @@ func set_open(open: bool) -> void:
 	if open == is_open:
 		return
 	is_open = open
+	Sound.play_at("door", global_position, 0.0, 25.0)
 	var tween := create_tween().set_process_mode(Tween.TWEEN_PROCESS_PHYSICS)
 	tween.tween_property(self, "position:y", _closed_y - (OPEN_DROP if open else 0.0), MOVE_TIME) \
 			.set_trans(Tween.TRANS_SINE)
