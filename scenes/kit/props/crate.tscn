@@ -1,0 +1,38 @@
+[gd_scene format=3]
+
+[ext_resource type="Material" path="res://kit/materials/paint_teal.tres" id="m1"]
+[ext_resource type="Material" path="res://kit/materials/metal_dark.tres" id="m2"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_1"]
+size = Vector3(1, 1, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_2"]
+size = Vector3(1, 1, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_3"]
+size = Vector3(1.02, 0.08, 1.02)
+
+[sub_resource type="BoxMesh" id="BoxMesh_4"]
+size = Vector3(1.02, 0.08, 1.02)
+
+[node name="Crate" type="StaticBody3D"]
+input_ray_pickable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("BoxShape3D_1")
+
+[node name="Body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+mesh = SubResource("BoxMesh_2")
+surface_material_override/0 = ExtResource("m1")
+
+[node name="BandTop" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.85, 0)
+mesh = SubResource("BoxMesh_3")
+surface_material_override/0 = ExtResource("m2")
+
+[node name="BandBottom" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+mesh = SubResource("BoxMesh_4")
+surface_material_override/0 = ExtResource("m2")

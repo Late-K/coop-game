@@ -1,0 +1,93 @@
+[gd_scene format=3]
+
+[ext_resource type="Material" path="res://kit/materials/paint_teal.tres" id="m1"]
+[ext_resource type="Material" path="res://kit/materials/metal_dark.tres" id="m2"]
+[ext_resource type="Material" path="res://kit/materials/metal_light.tres" id="m3"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_1"]
+size = Vector3(1.8, 2, 0.5)
+
+[sub_resource type="BoxMesh" id="BoxMesh_2"]
+size = Vector3(0.58, 2, 0.5)
+
+[sub_resource type="BoxMesh" id="BoxMesh_3"]
+size = Vector3(0.3, 0.12, 0.01)
+
+[sub_resource type="BoxMesh" id="BoxMesh_4"]
+size = Vector3(0.03, 0.15, 0.02)
+
+[sub_resource type="BoxMesh" id="BoxMesh_5"]
+size = Vector3(0.58, 2, 0.5)
+
+[sub_resource type="BoxMesh" id="BoxMesh_6"]
+size = Vector3(0.3, 0.12, 0.01)
+
+[sub_resource type="BoxMesh" id="BoxMesh_7"]
+size = Vector3(0.03, 0.15, 0.02)
+
+[sub_resource type="BoxMesh" id="BoxMesh_8"]
+size = Vector3(0.58, 2, 0.5)
+
+[sub_resource type="BoxMesh" id="BoxMesh_9"]
+size = Vector3(0.3, 0.12, 0.01)
+
+[sub_resource type="BoxMesh" id="BoxMesh_10"]
+size = Vector3(0.03, 0.15, 0.02)
+
+[node name="Lockers" type="StaticBody3D"]
+input_ray_pickable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+shape = SubResource("BoxShape3D_1")
+
+[node name="Locker0" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 1, 0)
+mesh = SubResource("BoxMesh_2")
+surface_material_override/0 = ExtResource("m1")
+
+[node name="Vent0" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 1.75, 0.255)
+mesh = SubResource("BoxMesh_3")
+surface_material_override/0 = ExtResource("m2")
+cast_shadow = 0
+
+[node name="Handle0" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.39999999999999997, 1.05, 0.26)
+mesh = SubResource("BoxMesh_4")
+surface_material_override/0 = ExtResource("m3")
+cast_shadow = 0
+
+[node name="Locker1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+mesh = SubResource("BoxMesh_5")
+surface_material_override/0 = ExtResource("m1")
+
+[node name="Vent1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.75, 0.255)
+mesh = SubResource("BoxMesh_6")
+surface_material_override/0 = ExtResource("m2")
+cast_shadow = 0
+
+[node name="Handle1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, 1.05, 0.26)
+mesh = SubResource("BoxMesh_7")
+surface_material_override/0 = ExtResource("m3")
+cast_shadow = 0
+
+[node name="Locker2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 1, 0)
+mesh = SubResource("BoxMesh_8")
+surface_material_override/0 = ExtResource("m1")
+
+[node name="Vent2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 1.75, 0.255)
+mesh = SubResource("BoxMesh_9")
+surface_material_override/0 = ExtResource("m2")
+cast_shadow = 0
+
+[node name="Handle2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.8, 1.05, 0.26)
+mesh = SubResource("BoxMesh_10")
+surface_material_override/0 = ExtResource("m3")
+cast_shadow = 0

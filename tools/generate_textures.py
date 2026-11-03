@@ -124,6 +124,98 @@ def door_panel():
     write_png("door_panel", width, height, pixel)
 
 
+# --- Level kit surfaces (see tools/build_kit.gd). Floors are 2 x 2 m, walls 2 m x 2.5 m. ---
+
+def floor_grate():
+    """Metal floor grating: dark slots between bright bars, a heavier frame every metre."""
+    size = 32
+    rng = random.Random(5)
+    bar, gap, frame = (104, 108, 106), (18, 20, 20), (72, 76, 74)
+
+    def pixel(x, y):
+        if x % 16 in (0, 15) or y % 16 in (0, 15):
+            return shade(frame, rng.uniform(0.9, 1.05))
+        if y % 3 == 0:
+            return gap
+        return shade(bar, (0.85 if x % 4 == 0 else 1.0) * rng.uniform(0.92, 1.05))
+
+    write_png("floor_grate", size, size, pixel)
+
+
+def floor_concrete():
+    """Poured concrete: speckled grey, a saw-cut joint every 2 m, a few dark stains and cracks."""
+    size = 32
+    rng = random.Random(6)
+    base = (118, 116, 110)
+    stains = [(rng.randrange(size), rng.randrange(size), rng.randint(3, 6)) for _ in range(3)]
+    crack = {(x, 9 + (x // 5) % 3) for x in range(6, 20)}
+
+    def pixel(x, y):
+        if x == 0 or y == 0:
+            return (70, 68, 64)  # joint
+        if (x, y) in crack:
+            return (64, 62, 58)
+        k = rng.uniform(0.9, 1.06)
+        for sx, sy, r in stains:
+            if (x - sx) ** 2 + (y - sy) ** 2 < r * r:
+                k *= 0.82
+        return shade(base, k)
+
+    write_png("floor_concrete", size, size, pixel)
+
+
+def wall_concrete():
+    """Cast concrete: formwork seams every metre, rows of tie holes, damp darkening at the foot."""
+    width, height = 32, 40
+    rng = random.Random(7)
+    base = (104, 104, 100)
+
+    def pixel(x, y):
+        if y in (0, 16, 32):
+            return (66, 66, 62)  # formwork seam
+        if x % 8 == 4 and y % 16 == 8:
+            return (40, 40, 38)  # tie hole
+        k = rng.uniform(0.92, 1.05) * (1.0 - max(0, y - 30) * 0.04)  # damp foot
+        return shade(base, k)
+
+    write_png("wall_concrete", width, height, pixel)
+
+
+def wall_lab():
+    """Lab tiles: small off-white squares (0.5 m) above a dark skirting band, grout lines."""
+    width, height = 32, 40
+    rng = random.Random(8)
+    tile, skirting = (176, 184, 180), (40, 46, 48)
+    tone = {(tx, ty): rng.uniform(0.9, 1.04) for tx in range(4) for ty in range(5)}
+
+    def pixel(x, y):
+        if y >= 36:
+            return shade(skirting, rng.uniform(0.9, 1.1))
+        if y == 35:
+            return (90, 96, 96)
+        if x % 8 == 0 or y % 8 == 0:
+            return (98, 104, 102)  # grout
+        k = tone[(x // 8, y // 8)] * (0.94 if y < 3 else 1.0)
+        return shade(tile, k * rng.uniform(0.97, 1.02))
+
+    write_png("wall_lab", width, height, pixel)
+
+
+def snow():
+    """Packed snow: pale blue-white with soft drifts and a few footprint-dark specks."""
+    size = 32
+    rng = random.Random(9)
+
+    def pixel(x, y):
+        drift = 0.04 * ((x * 3 + y * 5) % 11) / 11
+        k = 0.95 + drift + rng.uniform(-0.03, 0.03)
+        if rng.random() < 0.01:
+            k *= 0.85
+        return shade((200, 210, 224), k)
+
+    write_png("snow", size, size, pixel)
+
+
 # Item icons for the terminal inventory: 32 x 20 pixel art, drawn as text. Characters map to
 # colours below ('.' is transparent background, rendered as the terminal's black).
 ICON_COLORS = {
@@ -235,4 +327,9 @@ if __name__ == "__main__":
     wall_panel()
     hazard()
     door_panel()
+    floor_grate()
+    floor_concrete()
+    wall_concrete()
+    wall_lab()
+    snow()
     icons()

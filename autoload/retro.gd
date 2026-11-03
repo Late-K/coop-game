@@ -23,7 +23,7 @@ var enabled := true
 var _view: SubViewportContainer
 var _screen_material := ShaderMaterial.new()
 var _default_material := StandardMaterial3D.new()
-var _converted := {} # source StandardMaterial3D -> ShaderMaterial
+var _converted := {} # source StandardMaterial3D -> ShaderMaterial; source MeshLibrary -> PS1 copy
 
 
 func _ready() -> void:
@@ -66,6 +66,30 @@ func _on_node_added(node: Node) -> void:
 	if node is GeometryInstance3D:
 		# Deferred: scripts usually assign their materials in _ready, after this signal.
 		_convert_node.call_deferred(node)
+	elif node is GridMap:
+		_convert_grid.call_deferred(node)
+
+
+## A GridMap draws its MeshLibrary's meshes directly, so the library itself is swapped for
+## a copy whose meshes use the PS1 materials (one copy per library, shared by all grids).
+func _convert_grid(grid: GridMap) -> void:
+	if not is_instance_valid(grid) or grid.mesh_library == null:
+		return
+	var source := grid.mesh_library
+	if not _converted.has(source):
+		var library: MeshLibrary = source.duplicate()
+		for id in library.get_item_list():
+			var mesh := library.get_item_mesh(id)
+			if mesh == null:
+				continue
+			mesh = mesh.duplicate()
+			for i in mesh.get_surface_count():
+				var material := mesh.surface_get_material(i)
+				mesh.surface_set_material(i, _convert(material if material else _default_material))
+			library.set_item_mesh(id, mesh)
+		_converted[source] = library
+		_converted[library] = library
+	grid.mesh_library = _converted[source]
 
 
 func _convert_node(node: GeometryInstance3D) -> void:

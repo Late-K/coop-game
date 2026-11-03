@@ -34,7 +34,41 @@ Explore (3rd person) → find a puzzle / obstacle → describe what you see over
 ## Survival & combat
 - Small inventory (6 slots). Keys and puzzle items take slots too.
 - Aim-to-shoot with laser sight, limited ammo, enemies that can get back up unless dealt with.
-- Safe rooms: save terminal + item box. The item box may be shared across both players' safe rooms.
+- Safe rooms: save terminal, respawn pod and item box (see Core rules).
+
+## Core rules (decided 2026-11-03)
+These are fixed before level design; rooms and puzzles are built around them.
+
+### Saving
+- **Save rooms come in linked pairs**, one on each player's side, and they are **sparse**. Each has a save terminal, a respawn pod right next to it, and an item box.
+- **Both players must be at a save terminal to save.** When one uses theirs, a joint prompt opens on both screens (terminal style, like the inventory): `SAVE? YOU: READY / PARTNER: WAITING`. Both confirm (E) and the game saves on both machines. Either can cancel.
+- The pair can quit and continue later from their last save (main menu: Continue).
+
+### Death
+- **One death reloads both players** to the last save.
+  - The dead player wakes in the **respawn pod** beside their save terminal (a short first-person beat).
+  - The survivor **fades to black and fades back in at their own save room**, idle, as if they have been waiting a while for their partner to come back.
+- **The world resets to the save:** every enemy respawns, items go back to where they were.
+- **Puzzles decide for themselves:** each puzzle is marked to reset or to stay solved on reload. Level design picks per puzzle (e.g. learned codes stay, physical states like power or valves reset).
+- **The body stays.** The only thing a reload cannot undo is the corpse at the death spot: walking back, you find yourself dead. Bodies persist for the rest of the save, across sessions, up to a cap (about 6 per player, tunable); beyond it the oldest is gone. PROCTOR can count them.
+- **The Visitor respawns too, and the game never explains how.** Before the airlock there are no lethal threats: the cold only makes the Visitor collapse and wake at the last lit lamp. From the airlock on, a death prints a new Visitor in the pod, as if the facility had always had their pattern. Where the scan came from is never answered. The first body the Visitor leaves is the only one that was certainly human.
+
+### Combat
+- **Shove, no melee.** A short push that knocks an enemy back and staggers it for about a second. No damage, short cooldown. Guns and ammo stay central; the shove only buys space.
+- **Most enemies** react to sight, footsteps and gunshots.
+- **Special enemies hear radios.** They track any radio that is switched on, on any station, whether anyone is talking or not.
+- **The radio can be switched off** (RADIO tab: POWER). Off means no voice or messages in or out, no stations, no radio readouts on the HUD, and the MAP tab goes dark. Hiding from a listener costs you your partner and your map.
+- *(suggestion)* Roster: a standard enemy that gets back up (exists), a blind listener that hunts radios, and one more decided with the level kit. Pathfinding on a navigation mesh.
+
+### Roles
+- **The Visitor sees what the Subject can't:** writing on walls, certain bodies, PROCTOR's traces.
+- **The Subject sees the code:** hidden door IDs, machine states, PROCTOR's markers.
+- Both use the same per-role visibility (one machine shows a thing, the other doesn't), which is also how the game will show the two players different versions of the truth.
+- Unchanged: the Subject ignores the cold and has a mechanical ECG; the Visitor freezes. Both heal with med kits.
+
+### Map and documents
+- **MAP tab:** area maps are found (wall plans, documents) and show your own position only, never your partner's, so describing where you are stays part of the game. Unexplored areas stay blank. The map runs on the radio and goes dark when it is off.
+- **FILES tab:** documents found in the facility (staff logs, notes, manuals) are kept and reread here. This is where most of the facility truth and PROCTOR's real name are found.
 
 ## Narrative
 Items marked *(suggestion)* are proposals to accept, change or drop. Everything else is the author's direction.
@@ -136,7 +170,8 @@ New systems this needs:
 - **Nearly empty gameplay screen:** no health bar, slot strip or temperature on screen. Damage and cold show as red and frost vignettes. Ammo appears only while aiming. Prompts, messages and dialogue use one style: a black box with a thin white border, in monospace.
 - **The ZP-SYS occupant terminal (Tab)** is the inventory: a diegetic screen in the system's cold cyan. Because it is part of the facility, it is part of PROCTOR, and later chapters can glitch it, lie through it, or show each player different contents.
   - ITEMS: status (condition ECG, body temperature, equipped weapon), six slots, item description, and actions: Use, Equip, Combine, Inspect, Drop.
-  - RADIO: the tuner (see Radio).
+  - RADIO: the tuner and the radio's power switch (see Radio).
+  - MAP and FILES: see Core rules (planned).
   - LOGS: every line and message seen this session. Lines that play while the terminal is open go here instead of on screen.
   - The Subject's ECG is perfectly regular, like a machine. Its body temperature never changes.
 - **Mechanics:** six slots, and everything takes one. Only an equipped weapon can be aimed. Combining rounds with the pistol loads it. Dropped items can be picked up by the partner. Item boxes in save rooms open a personal stash; boxes are not shared between players, so the pneumatic tube (which also opens the terminal) stays the way to hand things over.
@@ -168,4 +203,10 @@ PS1 / low-poly retro: low-res render (~480×270) upscaled with nearest filtering
 - **M3** Survival core: health, 6-slot inventory, item tube, one gun, one enemy, save room. ✓
 - **M4** Vertical slice (20–30 min) + PS1 visual pass + playtests. ← *current*
   - Done: story systems, PS1 pass, Chapter 1 blockout (`scenes/levels/chapter_1.tscn`). Next: playtests, then art/audio passes.
+- **Foundations before level design** (from the Core rules), in order:
+  1. Level-building kit: a fixed grid and modular pieces placed in the editor. ✓ (see `docs/level_kit.md`)
+  2. Character models and animation (the bodies have to look like the players).
+  3. Saving, joint save prompt, death reload, respawn pod, persistent bodies.
+  4. Shove, enemy pathfinding, the radio listener, radio power switch.
+  5. MAP and FILES tabs; per-role visibility.
 - **M5** Steam lobbies + in-game radio voice. Radio done ✓; Steam next.

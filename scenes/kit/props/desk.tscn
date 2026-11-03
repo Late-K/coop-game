@@ -1,0 +1,64 @@
+[gd_scene format=3]
+
+[ext_resource type="Material" path="res://kit/materials/metal_light.tres" id="m1"]
+[ext_resource type="Material" path="res://kit/materials/metal_dark.tres" id="m2"]
+[ext_resource type="Material" path="res://kit/materials/screen.tres" id="m3"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_1"]
+size = Vector3(1.6, 0.8, 0.8)
+
+[sub_resource type="BoxMesh" id="BoxMesh_2"]
+size = Vector3(1.6, 0.05, 0.8)
+
+[sub_resource type="BoxMesh" id="BoxMesh_3"]
+size = Vector3(0.05, 0.76, 0.76)
+
+[sub_resource type="BoxMesh" id="BoxMesh_4"]
+size = Vector3(0.05, 0.76, 0.76)
+
+[sub_resource type="BoxMesh" id="BoxMesh_5"]
+size = Vector3(0.5, 0.4, 0.35)
+
+[sub_resource type="BoxMesh" id="BoxMesh_6"]
+size = Vector3(0.42, 0.3, 0.01)
+
+[sub_resource type="BoxMesh" id="BoxMesh_7"]
+size = Vector3(0.45, 0.03, 0.15)
+
+[node name="Desk" type="StaticBody3D"]
+input_ray_pickable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+shape = SubResource("BoxShape3D_1")
+
+[node name="Top" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.78, 0)
+mesh = SubResource("BoxMesh_2")
+surface_material_override/0 = ExtResource("m1")
+
+[node name="SideL" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.76, 0.38, 0)
+mesh = SubResource("BoxMesh_3")
+surface_material_override/0 = ExtResource("m2")
+
+[node name="SideR" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.76, 0.38, 0)
+mesh = SubResource("BoxMesh_4")
+surface_material_override/0 = ExtResource("m2")
+
+[node name="Monitor" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, 1.0, -0.15)
+mesh = SubResource("BoxMesh_5")
+surface_material_override/0 = ExtResource("m2")
+
+[node name="Screen" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, 1.02, 0.03)
+mesh = SubResource("BoxMesh_6")
+surface_material_override/0 = ExtResource("m3")
+cast_shadow = 0
+
+[node name="Keyboard" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, 0.82, 0.2)
+mesh = SubResource("BoxMesh_7")
+surface_material_override/0 = ExtResource("m2")

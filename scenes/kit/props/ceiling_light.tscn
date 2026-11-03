@@ -1,0 +1,14 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/kit/kit_light.gd" id="s1"]
+
+
+
+[node name="CeilingLight" type="Node3D"]
+
+[node name="Light" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.3, 0)
+script = ExtResource("s1")
+light_color = Color(1, 0.86, 0.7, 1)
+light_energy = 2.5
+omni_range = 8.0

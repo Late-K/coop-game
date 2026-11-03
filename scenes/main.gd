@@ -10,6 +10,7 @@ extends Node
 
 const CHAPTER_1_PATH := "res://scenes/levels/chapter_1.tscn"
 const TEST_LEVEL_PATH := "res://scenes/levels/test_level.tscn"
+const KIT_SAMPLE_PATH := "res://scenes/levels/kit_sample.tscn"
 const MENU_AMBIENCE := "amb_lab"
 
 var _in_game := false
@@ -18,7 +19,7 @@ var menu_open := false
 var _pause_menu := PanelContainer.new()
 var _pause_title := Label.new()
 var _resume_button := Button.new()
-## Pass `--level=test` to play the test level instead of Chapter 1.
+## Pass `--level=test` (test level) or `--level=kit` (level kit sample) instead of Chapter 1.
 var _level_path := CHAPTER_1_PATH
 ## Set when a chapter ends, so the host closing the session does not read as a disconnect.
 var _end_status := ""
@@ -230,6 +231,8 @@ func _handle_dev_args() -> void:
 	var args := OS.get_cmdline_user_args()
 	if "--level=test" in args:
 		_level_path = TEST_LEVEL_PATH
+	elif "--level=kit" in args:
+		_level_path = KIT_SAMPLE_PATH
 	for arg in args:
 		if arg == "--host":
 			_on_host_requested()
