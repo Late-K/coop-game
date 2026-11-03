@@ -92,6 +92,7 @@ func _build_pause_menu() -> void:
 	_resume_button.text = "Resume"
 	_resume_button.pressed.connect(_set_pause_menu.bind(false))
 	column.add_child(_resume_button)
+	column.add_child(Radio.make_device_button())
 	var leave := Button.new()
 	leave.text = "Leave session (ends it for both)"
 	leave.pressed.connect(func() -> void:

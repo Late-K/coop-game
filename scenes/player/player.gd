@@ -136,6 +136,7 @@ func _exit_tree() -> void:
 	if is_multiplayer_authority() and is_instance_valid(overlay) and overlay.get_parent() == get_tree().root:
 		overlay.queue_free()
 		Retro.set_condition(0.0, 0.0)
+		Radio.local_interference = 0.0
 
 
 func _apply_role() -> void:
@@ -195,6 +196,8 @@ func _physics_process(delta: float) -> void:
 	is_aiming = not frozen and Input.is_action_pressed("aim") and equipped != "" and inventory.has(equipped)
 	hud.set_ammo(is_aiming, "%s  %d / %d" % [Items.display_name(equipped).to_upper(), loaded_rounds,
 			inventory.count_of("ammo")] if is_aiming else "")
+	hud.set_radio(Radio.status_text())
+	Radio.listener_position = global_position
 	_update_condition()
 	var speed := AIM_SPEED if is_aiming else WALK_SPEED
 	# The top-down camera never rotates, so screen-up is always world -Z.
@@ -668,18 +671,21 @@ func _respawn() -> void:
 
 # --- Cold --------------------------------------------------------------------
 
-## Applies the look of the EnvironmentZone we stand in (e.g. the whiteout), if any.
-## Applies the look and sound of the EnvironmentZone we stand in (e.g. the whiteout).
+## Applies the look, sound and radio interference of the EnvironmentZone we stand in
+## (e.g. the whiteout).
 func _update_environment() -> void:
 	var environment: Environment = null
 	var level := get_tree().get_first_node_in_group("level") as Level
 	var ambience := level.ambience if level else ""
+	var interference := 0.0
 	for area in zone_probe.get_overlapping_areas():
 		if area is EnvironmentZone:
 			if area.environment:
 				environment = area.environment
 			if area.ambience:
 				ambience = area.ambience
+			interference = maxf(interference, area.radio_interference)
+	Radio.local_interference = interference
 	if third_person_camera.environment != environment:
 		third_person_camera.environment = environment
 		first_person_camera.environment = environment

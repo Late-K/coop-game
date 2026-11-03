@@ -47,7 +47,7 @@ An abandoned research facility in an extreme-cold environment, in ruins. It test
 ### The two players
 - **The Subject** starts inside, in a test cell. Twist: the Subject was never human; it's a robot that believes it is.
 - **The Visitor** comes in from outside, out of the cold, and gets trapped when the facility seals. Their true nature stays ambiguous (human or robot) and is never confirmed.
-- **The player characters never speak.** Only PROCTOR (and other voices of the facility) talk. The characters get narration and italic inner thoughts at most, so the real players' voices fill the silence, and their voices are part of what PROCTOR studies.
+- **The player characters never speak.** Only PROCTOR (and other voices of the facility) talk. The characters get plain narration at most (no inner thoughts), so the real players' voices fill the silence, and their voices are part of what PROCTOR studies.
 
 ### The three layers
 1. **Surface:** a trapped outsider and a confused test subject cooperate to escape a ruined facility while scavenging, fighting, and solving puzzles.
@@ -136,10 +136,22 @@ New systems this needs:
 - **Nearly empty gameplay screen:** no health bar, slot strip or temperature on screen. Damage and cold show as red and frost vignettes. Ammo appears only while aiming. Prompts, messages and dialogue use one style: a black box with a thin white border, in monospace.
 - **The ZP-SYS occupant terminal (Tab)** is the inventory: a diegetic screen in the system's cold cyan. Because it is part of the facility, it is part of PROCTOR, and later chapters can glitch it, lie through it, or show each player different contents.
   - ITEMS: status (condition ECG, body temperature, equipped weapon), six slots, item description, and actions: Use, Equip, Combine, Inspect, Drop.
-  - LOGS: every line seen this session. Lines that play while the terminal is open go here instead of on screen.
+  - RADIO: the tuner (see Radio).
+  - LOGS: every line and message seen this session. Lines that play while the terminal is open go here instead of on screen.
   - The Subject's ECG is perfectly regular, like a machine. Its body temperature never changes.
 - **Mechanics:** six slots, and everything takes one. Only an equipped weapon can be aimed. Combining rounds with the pistol loads it. Dropped items can be picked up by the partner. Item boxes in save rooms open a personal stash; boxes are not shared between players, so the pneumatic tube (which also opens the terminal) stays the way to hand things over.
 - **Esc** opens a small pause menu (the game keeps running; co-op can't pause).
+
+## Radio
+- **Push-to-talk walkie-talkie (hold V).** The real players' voices are the only voices the characters have. It works from the lobby on, as soon as the partner is connected, and is full duplex.
+- **Sounds like a handheld radio:** 8 kHz, band-passed (400–3000 Hz), a little overdriven, with a key-up chirp when a transmission starts and a squelch tail when it ends. A slow automatic gain evens out quiet and loud mics.
+- **Interference is level design.** `EnvironmentZone.radio_interference` (0 clear, 1 unusable) adds static, crackle and drop-outs. The worse of the two players' spots wins, so either player can be the reason they can't understand each other. The whiteout is at 0.3.
+- **HUD:** bottom left, amber. `TX [||||....]` (your mic level) while talking, `RX signal [|||.]` while your partner talks. Pause menu and lobby have a microphone picker; the lobby says when no mic can be opened.
+- **The band (terminal RADIO tab).** Both radios start on the partner channel, 140.0 MHz. The tuner (100–180 MHz) has a scrolling scale under a fixed needle, a signal meter, an oscilloscope, and a transcript that types out once a station comes in clearly. Stations are `RadioSignal` nodes: frequency, a sound loop, a transcript, and optionally a range or a single role who can pick them up. They emit `heard` the first time a player tunes them in clearly, for puzzles to hook into.
+- **Tuning away costs the partner.** Voice and messages only reach a radio on the sender's frequency: 0.1–0.4 MHz off comes through as static and garbled text, further off not at all. Players can meet on another frequency on purpose ("tune to 121.5"). The HUD shows `FREQ 121.5 off channel` as a reminder.
+- **Chapter 1 stations:** 121.5, an automated distress beacon in Morse, whose transcript says the message has repeated {iteration} times. 163.8, a numbers station reading the iteration number and "HEADCOUNT: TWO", until the last time it says THREE.
+- **Text messages** for players without a microphone, written only in the RADIO tab (Down from the dial, Enter to send) and sent over the same radio, so the same frequency rules apply. They are read in the RADIO tab and LOGS; the HUD only says `RX< 1 new message [Tab] radio`. Reading or writing one means opening the terminal, which leaves the character standing still.
+- **PROCTOR is listening.** MetaSave keeps the total time spent talking (`{radio_minutes}` in lines). A closed microphone is noticed: once per session (when the player tries to talk or type, or 40 s into a chapter), PROCTOR remarks on it, and it counts sessions played without a microphone (`{mic_sessions}`). *(suggestion)* Later: zones where PROCTOR is on the channel (a third voice in the static), transmissions it replays back to the wrong player, or a room where the radio only works if nobody speaks.
 
 ## Visual style
 PS1 / low-poly retro: low-res render (~480×270) upscaled with nearest filtering, vertex snapping, dithering, limited palette, heavy fog.
@@ -147,7 +159,7 @@ PS1 / low-poly retro: low-res render (~480×270) upscaled with nearest filtering
 ## Tech
 - Godot 4.7, GDScript, Jolt physics.
 - Host-authoritative listen server, 2 peers. ENet for development, GodotSteam for release.
-- Voice: Discord while prototyping; in-game radio voice later (milestone M5).
+- Voice: in-game radio (`autoload/radio.gd`): microphone -> 8 kHz mu-law (64 kbit/s) over unreliable RPCs -> a jitter buffer and AudioStreamGenerator on the Radio bus. No codec plugin. Opus could replace mu-law later if bandwidth matters.
 
 ## Roadmap
 - **M0** Pre-production: this doc + paper-prototype 2–3 radio puzzles with a friend.
@@ -156,4 +168,4 @@ PS1 / low-poly retro: low-res render (~480×270) upscaled with nearest filtering
 - **M3** Survival core: health, 6-slot inventory, item tube, one gun, one enemy, save room. ✓
 - **M4** Vertical slice (20–30 min) + PS1 visual pass + playtests. ← *current*
   - Done: story systems, PS1 pass, Chapter 1 blockout (`scenes/levels/chapter_1.tscn`). Next: playtests, then art/audio passes.
-- **M5** Steam lobbies + in-game radio voice.
+- **M5** Steam lobbies + in-game radio voice. Radio done ✓; Steam next.

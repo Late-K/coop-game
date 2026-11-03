@@ -4,7 +4,8 @@ extends Node
 ## recording with the same file name.
 ##
 ## Buses (audio/default_bus_layout.tres): World (3D, with reverb), Ambience, Voice
-## (text blips), UI. 3D sounds are heard from the local player's position.
+## (text blips), UI, Radio (the players' voices, see Radio). 3D sounds are heard from the
+## local player's position.
 
 const SOUND_DIR := "res://audio/placeholder/"
 const AMBIENCE_FADE := 1.5
@@ -92,7 +93,7 @@ func set_ambience(sound: String) -> void:
 	create_tween().tween_property(incoming, "volume_db", 0.0, AMBIENCE_FADE)
 
 
-## Text typing sound for a voice ("sys", "proctor", "thought").
+## Text typing sound for a voice ("sys", "proctor", "narration").
 func blip(voice: String) -> void:
 	_voice.stream = stream("blip_" + voice)
 	_voice.pitch_scale = randf_range(0.96, 1.04)

@@ -6,12 +6,14 @@ text blips). Everything is 22 kHz mono, a little bitcrushed. Loops carry a WAV
 'smpl' loop chunk, which Godot's importer picks up ("Detect From WAV").
 
 Replace any file with a real recording of the same name and the game uses it.
-Run from the project root:  python tools/generate_audio.py
+Run from the project root:  python tools/generate_audio.py [sound names...]
+(no names: all of them)
 """
 import math
 import os
 import random
 import struct
+import sys
 
 SR = 22050
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "audio", "placeholder")
@@ -416,7 +418,7 @@ def text_blip(voice):
         n = length(0.065)
         out = mix(n, tone(600, n, "square"), gain(tone(617, n, "square"), 0.8))
         return crush(normalize(mul(lowpass(out, 5000), envelope(n, 0.001, 0.03, 0.01)), 0.4), bits=6)
-    n = length(0.04)  # thought
+    n = length(0.04)  # narration
     return normalize(mul(tone(520, n), envelope(n, 0.006, 0.02, 0.012)), 0.2)
 
 
@@ -425,6 +427,67 @@ def static_burst():
     n = length(0.3)
     out = mul(highpass(crush(noise(n, 35), bits=5, hold=2), 400), envelope(n, 0.003, 0.1))
     return normalize(out, 0.45)
+
+
+def radio_key():
+    """Push-to-talk: a switch click, then the short rising chirp of a handheld radio."""
+    n = length(0.12)
+    click = mul(highpass(noise(length(0.008), 37), 1500), envelope(length(0.008), 0.0003, 0.002))
+    low = mul(tone(1200, length(0.04), "square"), envelope(length(0.04), 0.002, None, 0.01))
+    high = mul(tone(1600, length(0.05), "square"), envelope(length(0.05), 0.002, None, 0.01))
+    chirp = bandpass(mix(length(0.1), low, (high, 0.045)), 400, 3000)
+    return crush(normalize(mix(n, click, (chirp, 0.012)), 0.5), bits=7)
+
+
+def radio_unkey():
+    """Release: the squelch tail, a short burst of band-limited static that cuts off."""
+    n = length(0.2)
+    out = mul(bandpass(crush(noise(n, 38), bits=5, hold=2), 400, 3200), envelope(n, 0.002, None, 0.03))
+    return normalize(out, 0.4)
+
+
+def radio_static():
+    """Hiss between stations: crushed band-limited noise, slowly fading, with crackle. Loops."""
+    n = length(4.3)
+    hiss = bandpass(crush(noise(n, 40), bits=6, hold=2), 300, 3500)
+    fade = [0.75 + 0.25 * math.sin(TAU * 0.4 * i / SR) * math.sin(TAU * 0.13 * i / SR + 1) for i in range(n)]
+    rng = random.Random(41)
+    pops = [0.0] * n
+    for _ in range(14):
+        p = rng.randrange(n - 200)
+        for k in range(rng.randrange(20, 120)):
+            pops[p + k] = rng.uniform(-1, 1)
+    return loopify(normalize(mix(n, mul(hiss, fade), gain(pops, 0.5)), 0.5), 0.3)
+
+
+def radio_beacon():
+    """Distress beacon: a 1 kHz tone keyed in Morse (SOS), then a pause. Loops."""
+    unit, t, layers = 0.09, 0.3, []
+    for ch in "... --- ...":
+        if ch == " ":
+            t += unit * 2
+            continue
+        d = unit if ch == "." else unit * 3
+        layers.append((mul(tone(1000, length(d), "square"), envelope(length(d), 0.004, None, 0.006)), t))
+        t += d + unit
+    return crush(normalize(lowpass(mix(length(4.0), *layers), 3000), 0.45), bits=8)
+
+
+def radio_numbers():
+    """A numbers station: a two-note interval chime, then flat synthetic syllables. Loops."""
+    rng = random.Random(39)
+    layers = [(mul(tone(784, length(0.25)), envelope(length(0.25), 0.005, 0.08)), 0.1),
+              (mul(tone(587, length(0.35)), envelope(length(0.35), 0.005, 0.1)), 0.35)]
+    vowels = [(700, 1200), (400, 2000), (300, 900), (500, 1500)]
+    t = 1.2
+    for i in range(8):
+        d = 0.32
+        f1, f2 = vowels[rng.randrange(4)]
+        src = tone(110, length(d), "saw")
+        syllable = mix(length(d), resonator(src, f1, 6), gain(resonator(src, f2, 8), 0.6))
+        layers.append((mul(syllable, envelope(length(d), 0.03, None, 0.08)), t))
+        t += d + (0.25 if i % 2 == 0 else 0.55)
+    return crush(normalize(mix(length(6.5), *layers), 0.5), bits=8)
 
 
 def sting_chapter():
@@ -462,12 +525,19 @@ SOUNDS = {
     "enemy_hit": (enemy_hit, False),
     "blip_sys": (lambda: text_blip("sys"), False),
     "blip_proctor": (lambda: text_blip("proctor"), False),
-    "blip_thought": (lambda: text_blip("thought"), False),
+    "blip_narration": (lambda: text_blip("narration"), False),
     "static": (static_burst, False),
+    "radio_key": (radio_key, False),
+    "radio_unkey": (radio_unkey, False),
+    "radio_static": (radio_static, True),
+    "radio_beacon": (radio_beacon, True),
+    "radio_numbers": (radio_numbers, True),
     "sting_chapter": (sting_chapter, False),
 }
 
 if __name__ == "__main__":
-    print(f"Writing {len(SOUNDS)} sounds to {OUT}")
-    for name, (make, loop) in SOUNDS.items():
+    names = sys.argv[1:] or list(SOUNDS)
+    print(f"Writing {len(names)} sounds to {OUT}")
+    for name in names:
+        make, loop = SOUNDS[name]
         write_wav(name, make(), loop)

@@ -10,6 +10,7 @@ var _role_buttons := {} # Session.Role -> Button
 var _start_button := Button.new()
 var _leave_button := Button.new()
 var _status_label := Label.new()
+var _radio_label := Label.new()
 
 
 func _ready() -> void:
@@ -49,11 +50,27 @@ func _ready() -> void:
 	_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_status_label)
+	column.add_child(Radio.make_device_button())
+	_radio_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_radio_label.modulate = PlayerHud.RADIO_COLOR
+	_radio_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(_radio_label)
 
 	Session.roles_changed.connect(refresh)
 	multiplayer.peer_connected.connect(func(_id: int) -> void: refresh())
 	multiplayer.peer_disconnected.connect(func(_id: int) -> void: refresh())
 	refresh()
+
+
+func _process(_delta: float) -> void:
+	var status := Radio.status_text()
+	if status:
+		_radio_label.text = status
+	elif Radio.mic_failed:
+		_radio_label.text = "No microphone. Pick one above, or allow microphone access for desktop apps in Windows privacy settings."
+	else:
+		_radio_label.text = "Hold V to talk on the radio."
+	_radio_label.visible = not multiplayer.get_peers().is_empty()
 
 
 func refresh() -> void:

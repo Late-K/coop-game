@@ -2,16 +2,20 @@ class_name PlayerHud
 extends Control
 ## The local player's in-game HUD, kept nearly empty: health, cold and inventory live in the
 ## ZP-SYS terminal (Tab) and in screen vignettes, not on screen. What remains is the interact
-## prompt, short messages in the same bordered box as story lines, and an ammo readout that
-## appears only while aiming. Built in code; never blocks the mouse.
+## prompt, short messages in the same bordered box as story lines, an ammo readout that
+## appears only while aiming, and the radio readout (talking, unread messages) bottom left.
+## Messages are written and read in the terminal's RADIO tab. Built in code; never blocks
+## the mouse.
 
 const MESSAGE_TIME := 2.0
 const TEXT_COLOR := Color(0.88, 0.88, 0.88)
+const RADIO_COLOR := Color(1.0, 0.72, 0.35)
 
 var _prompt_label := Label.new()
 var _message_box := PanelContainer.new()
 var _message_label := Label.new()
 var _ammo_label := Label.new()
+var _radio_label := Label.new()
 var _message_tween: Tween
 
 
@@ -61,7 +65,17 @@ func _ready() -> void:
 	_ammo_label.modulate = TEXT_COLOR
 	add_child(_ammo_label)
 
-	for node in [self, _message_box, _message_label, _prompt_label, _ammo_label]:
+	_radio_label.anchor_top = 1.0
+	_radio_label.anchor_bottom = 1.0
+	_radio_label.offset_left = 24
+	_radio_label.offset_right = 300
+	_radio_label.offset_top = -64
+	_radio_label.offset_bottom = -16
+	_radio_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	_radio_label.modulate = RADIO_COLOR
+	add_child(_radio_label)
+
+	for node in [self, _message_box, _message_label, _prompt_label, _ammo_label, _radio_label]:
 		node.mouse_filter = MOUSE_FILTER_IGNORE
 
 
@@ -73,6 +87,11 @@ func set_prompt(text: String) -> void:
 func set_ammo(shown: bool, text: String) -> void:
 	_ammo_label.visible = shown
 	_ammo_label.text = text
+
+
+## Radio.status_text(): bottom left, empty when nobody is talking.
+func set_radio(text: String) -> void:
+	_radio_label.text = text
 
 
 func show_message(text: String) -> void:

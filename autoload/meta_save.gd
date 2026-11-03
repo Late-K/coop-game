@@ -9,8 +9,10 @@ extends Node
 const PATH := "user://proctor.cfg"
 const ITERATION_BASE := 4116
 
-var counters := {"launches": 0, "sessions": 0, "sessions_abandoned": 0, "deaths": 0, "chapters_completed": 0, "lines_skipped": 0}
-## Reset at the start of every session.
+var counters := {"launches": 0, "sessions": 0, "sessions_abandoned": 0, "deaths": 0, "chapters_completed": 0, "lines_skipped": 0,
+		"radio_seconds": 0, "sessions_without_mic": 0}
+## Reset at the start of every session. radio_presses counts transmissions and messages
+## (see Radio).
 var session := {"radio_presses": 0, "deaths": 0}
 
 
@@ -20,11 +22,6 @@ func _ready() -> void:
 		for key in counters:
 			counters[key] = file.get_value("counters", key, 0)
 	record("launches")
-
-
-func _input(event: InputEvent) -> void:
-	if event.is_action_pressed("radio"):
-		session["radio_presses"] += 1
 
 
 func record(key: String, amount := 1) -> void:
@@ -57,7 +54,9 @@ func check(condition: String) -> bool:
 	return false
 
 
-## Fills {iteration}, {attempt}, {deaths}, {launches}, {abandoned} and {skipped} in story text.
+## Fills {iteration}, {attempt}, {deaths}, {launches}, {abandoned}, {skipped} and
+## {radio_minutes} (time spent talking on the radio, ever: PROCTOR is listening) and
+## {mic_sessions} (sessions played with the microphone closed) in story text.
 func format(text: String) -> String:
 	return text.format({
 		"iteration": ITERATION_BASE + counters["sessions"],
@@ -66,6 +65,8 @@ func format(text: String) -> String:
 		"launches": counters["launches"],
 		"abandoned": counters["sessions_abandoned"],
 		"skipped": counters["lines_skipped"],
+		"radio_minutes": counters["radio_seconds"] / 60,
+		"mic_sessions": counters["sessions_without_mic"],
 	})
 
 

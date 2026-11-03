@@ -5,7 +5,8 @@ extends Control
 ##
 ## ITEMS: status (condition ECG, body temperature, equipped weapon), the six carried slots,
 ## and the selected item's description and actions (Use, Equip, Combine, Inspect, Drop).
-## LOGS: every story line seen this session.
+## RADIO: the tuner (RadioTuner): find stations, at the cost of the partner channel.
+## LOGS: every story line and message seen this session.
 ## Opened from an item box, the right column shows the box instead: choose a slot on either
 ## side to move it across. Opened from a device (tube, heater...), you choose which item to
 ## use on it; the device decides what happens (see `device`).
@@ -56,6 +57,7 @@ var _item_text := Label.new()
 var _item_icon := TextureRect.new()
 var _hint := Label.new()
 var _items_page := HBoxContainer.new()
+var _radio_page := RadioTuner.new()
 var _logs_page := ScrollContainer.new()
 var _logs_list := VBoxContainer.new()
 var _actions_box := VBoxContainer.new()
@@ -95,7 +97,7 @@ func _ready() -> void:
 	page.add_child(header)
 	header.add_child(_label("ZP-SYS // OCCUPANT TERMINAL", 16, PHOSPHOR))
 	header.add_child(_spacer())
-	for tab in ["items", "logs"]:
+	for tab in ["items", "radio", "logs"]:
 		var button := _button(tab.to_upper(), 14)
 		button.pressed.connect(_show_tab.bind(tab))
 		header.add_child(button)
@@ -105,6 +107,8 @@ func _ready() -> void:
 	_build_items_page()
 	page.add_child(_items_page)
 	_items_page.size_flags_vertical = SIZE_EXPAND_FILL
+	_radio_page.size_flags_vertical = SIZE_EXPAND_FILL
+	page.add_child(_radio_page)
 	_logs_page.size_flags_vertical = SIZE_EXPAND_FILL
 	_logs_page.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_logs_list.size_flags_horizontal = SIZE_EXPAND_FILL
@@ -147,6 +151,7 @@ func open(owner_player: Player, target: Variant = null) -> void:
 func close() -> void:
 	visible = false
 	Story.suppressed = false
+	Radio.tuner_open = false
 	if box and box.changed.is_connected(refresh):
 		box.changed.disconnect(refresh)
 	box = null
@@ -154,18 +159,27 @@ func close() -> void:
 	Sound.play_ui("keypad_press", -6.0, 0.6)
 
 
-func _unhandled_input(event: InputEvent) -> void:
+## Tab / Esc are caught before the GUI sees them: otherwise Tab moves focus between buttons
+## (or types into the message field) instead of closing the terminal.
+func _input(event: InputEvent) -> void:
 	if not visible:
 		return
 	if event.is_action_pressed("inventory") or event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
-		if _combine_from >= 0 or _inspecting:
+		if _radio_page.is_typing():
+			_radio_page.stop_typing()
+		elif _combine_from >= 0 or _inspecting:
 			_combine_from = -1
 			_inspecting = false
 			refresh()
 		else:
 			player.close_inventory()
-	elif event.is_action_pressed("interact"):
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not visible:
+		return
+	if event.is_action_pressed("interact"):
 		var focused := get_viewport().gui_get_focus_owner()
 		if focused is Button and is_ancestor_of(focused):
 			get_viewport().set_input_as_handled()
@@ -270,11 +284,16 @@ func refresh() -> void:
 		return
 	_items_page.visible = _tab == "items"
 	_logs_page.visible = _tab == "logs"
+	_radio_page.visible = _tab == "radio"
 	for tab in _tab_buttons:
 		_tab_buttons[tab].add_theme_color_override("font_color", PHOSPHOR if tab == _tab else DIM)
 	if _tab == "logs":
 		_refresh_logs()
 		_hint.text = "[Tab] close   [Mouse wheel] scroll"
+		return
+	if _tab == "radio":
+		_hint.text = "[Left/Right] tune, hold to sweep   [Down] write a message, [Enter] send   [Tab] close"
+		_apply_notice()
 		return
 
 	_role_label.text = Session.ROLE_NAMES[player.role].to_upper()
@@ -392,9 +411,12 @@ func _draw_ecg() -> void:
 
 func _show_tab(tab: String) -> void:
 	_tab = tab
+	Radio.tuner_open = tab == "radio" and visible
 	refresh()
 	if tab == "items" and visible:
 		_slot_buttons[_selected].grab_focus()
+	elif tab == "radio" and visible:
+		_radio_page.open()
 
 
 func _on_slot_focused(index: int) -> void:
@@ -441,9 +463,9 @@ func _on_action(action: String) -> void:
 		_slot_buttons[_selected].grab_focus()
 
 
-# --- widgets --------------------------------------------------------------------
+# --- widgets (static: RadioTuner uses them too) -------------------------------------
 
-func _style(bg: Color, border: Color, width: int, radius: int, margin: int) -> StyleBoxFlat:
+static func _style(bg: Color, border: Color, width: int, radius: int, margin: int) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = bg
 	style.border_color = border
@@ -453,7 +475,7 @@ func _style(bg: Color, border: Color, width: int, radius: int, margin: int) -> S
 	return style
 
 
-func _label(text: String, font_size: int, color: Color) -> Label:
+static func _label(text: String, font_size: int, color: Color) -> Label:
 	var label := Label.new()
 	label.text = text
 	label.add_theme_font_size_override("font_size", font_size)
@@ -461,7 +483,7 @@ func _label(text: String, font_size: int, color: Color) -> Label:
 	return label
 
 
-func _button(text: String, font_size: int) -> Button:
+static func _button(text: String, font_size: int) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.add_theme_font_size_override("font_size", font_size)
@@ -493,20 +515,20 @@ func _slot_button(min_size: Vector2) -> Button:
 	return button
 
 
-func _rule() -> ColorRect:
+static func _rule() -> ColorRect:
 	var rule := ColorRect.new()
 	rule.color = DIM
 	rule.custom_minimum_size = Vector2(0, 1)
 	return rule
 
 
-func _spacer() -> Control:
+static func _spacer() -> Control:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = SIZE_EXPAND_FILL
 	return spacer
 
 
-func _spacer_v() -> Control:
+static func _spacer_v() -> Control:
 	var spacer := Control.new()
 	spacer.size_flags_vertical = SIZE_EXPAND_FILL
 	return spacer

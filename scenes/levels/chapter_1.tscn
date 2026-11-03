@@ -25,6 +25,7 @@
 [ext_resource type="Texture2D" path="res://textures/floor_tiles.png" id="23_r"]
 [ext_resource type="Texture2D" path="res://textures/wall_panel.png" id="24_r"]
 [ext_resource type="Texture2D" path="res://textures/hazard.png" id="25_r"]
+[ext_resource type="Script" path="res://scenes/radio/radio_signal.gd" id="26_r"]
 
 [sub_resource type="Environment" id="Environment_facility"]
 background_mode = 1
@@ -843,6 +844,7 @@ script = ExtResource("21_r")
 environment = SubResource("Environment_whiteout")
 ambience = "amb_whiteout"
 footsteps = "step_snow"
+radio_interference = 0.3
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/Whiteout"]
 shape = SubResource("Box_5")
@@ -1274,3 +1276,19 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 74, 0.1, -22)
 
 [node name="PlayerSpawner" type="MultiplayerSpawner" parent="."]
 spawn_path = NodePath("../Players")
+
+[node name="Radio" type="Node3D" parent="."]
+
+[node name="DistressBeacon" type="Node3D" parent="Radio"]
+script = ExtResource("26_r")
+frequency = 121.5
+sound = "radio_beacon"
+transcript = "AUTOMATED DISTRESS. ZERO POINT RESEARCH STATION. CONTAINMENT FAILURE, ALL SECTIONS. PERSONNEL EVACUATED. DO NOT APPROACH. THIS MESSAGE HAS REPEATED {iteration} TIMES."
+shape = "pulse"
+
+[node name="NumbersStation" type="Node3D" parent="Radio"]
+script = ExtResource("26_r")
+frequency = 163.8
+sound = "radio_numbers"
+transcript = "{iteration}. HEADCOUNT: TWO. {iteration}. HEADCOUNT: TWO. {iteration}. HEADCOUNT: THREE."
+shape = "voice"

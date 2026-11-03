@@ -10,6 +10,16 @@ room_size = 0.75
 damping = 0.6
 wet = 0.22
 
+[sub_resource type="AudioEffectHighPassFilter" id="HighPass_radio"]
+cutoff_hz = 400.0
+
+[sub_resource type="AudioEffectLowPassFilter" id="LowPass_radio"]
+cutoff_hz = 3000.0
+
+[sub_resource type="AudioEffectDistortion" id="Distortion_radio"]
+mode = 3
+drive = 0.3
+
 [resource]
 bus/0/effect/0/effect = SubResource("LowPass_master")
 bus/0/effect/0/enabled = true
@@ -41,3 +51,15 @@ bus/4/mute = false
 bus/4/bypass_fx = false
 bus/4/volume_db = -4.0
 bus/4/send = &"Master"
+bus/5/name = &"Radio"
+bus/5/solo = false
+bus/5/mute = false
+bus/5/bypass_fx = false
+bus/5/volume_db = 0.0
+bus/5/send = &"Master"
+bus/5/effect/0/effect = SubResource("HighPass_radio")
+bus/5/effect/0/enabled = true
+bus/5/effect/1/effect = SubResource("LowPass_radio")
+bus/5/effect/1/enabled = true
+bus/5/effect/2/effect = SubResource("Distortion_radio")
+bus/5/effect/2/enabled = true

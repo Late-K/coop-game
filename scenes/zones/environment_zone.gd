@@ -10,6 +10,9 @@ extends Area3D
 @export var ambience := ""
 ## Footstep sound for anyone walking here, e.g. "step_snow".
 @export var footsteps := ""
+## Radio static and drop-outs while standing here (0 clear, 1 unusable). The worse of the
+## two players' spots wins, for both of them.
+@export_range(0.0, 1.0) var radio_interference := 0.0
 
 
 func _init() -> void:

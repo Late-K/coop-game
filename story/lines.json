@@ -10,9 +10,8 @@
 		"subject": "Perimeter lamps can be operated from this cell. Reserve power permits two at a time. There is a heat signature in the snow. Assisting it is optional. Everything here is optional, now."
 	},
 	"whiteout": {
-		"thought": true,
 		"keep": true,
-		"visitor": "Whiteout. I can't see past my own hands. There are posts in the snow, each one painted with a symbol."
+		"visitor": "Whiteout. Nothing is visible past arm's length. Posts stand in the snow, each one painted with a symbol."
 	},
 	"returning": {
 		"speaker": "PROCTOR",
@@ -61,9 +60,8 @@
 		"visitor": "Caution: maintenance unit 7 is active. It has been active without instructions for a very long time. Please do not take it personally."
 	},
 	"frozen_door": {
-		"thought": true,
 		"keep": true,
-		"visitor": "Frozen solid. The heater next to it is dead. I need something that burns."
+		"visitor": "The bulkhead is frozen solid. The heater beside it is dead, its cell slot empty."
 	},
 	"heater_on": {
 		"speaker": "ZP-SYS",
@@ -110,8 +108,17 @@
 		"text": "Service lift descending. Emergency systems entering low-power mode. Goodbye. It was nice to be needed."
 	},
 	"cold_warning": {
-		"thought": true,
-		"visitor": "I can't feel my fingers. I need heat."
+		"visitor": "The fingers have gone numb. The cold is no longer outside."
+	},
+	"mic_blocked": {
+		"speaker": "PROCTOR",
+		"keep": true,
+		"text": "Your microphone is closed. You can keep me from hearing you. You cannot keep me from reading you."
+	},
+	"mic_blocked_again": {
+		"speaker": "PROCTOR",
+		"keep": true,
+		"text": "Microphone closed again. That makes {mic_sessions}. You think silence makes you harder to study. It makes you easier."
 	},
 	"friendly_fire": {
 		"speaker": "PROCTOR",

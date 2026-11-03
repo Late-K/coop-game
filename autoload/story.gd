@@ -8,8 +8,6 @@ extends Node
 ##   "text"     shown to both players, or
 ##   "subject" / "visitor"  per-role text. Give only one of them for a private line.
 ##   "if"       only shown when MetaSave.check(condition) holds on that machine.
-##   "thought"  true for a player character's inner thought: italic and grey.
-##              (Player characters never speak out loud; only PROCTOR and narration do.)
 ##   "keep"     true if the line must never be dropped (puzzle hints, key beats).
 ## Texts may use MetaSave placeholders such as {iteration}.
 ##
@@ -30,14 +28,14 @@ const SKIP_COMMENT_AT := 3
 ## Voices are told apart by colour only. ZP-SYS (cold cyan) is the mask, a degraded
 ## emergency system. PROCTOR (a warm, wrong red) is what is under it; it only speaks
 ## when the players step outside the script (die, skip, rush, shoot each other, quit
-## and return). Lines without a speaker are narration.
+## and return). Lines without a speaker are narration: player characters never speak,
+## and there are no inner thoughts either; what they notice is told plainly.
 const SPEAKER_COLORS := {"ZP-SYS": Color(0.6, 0.9, 1.0), "PROCTOR": Color(1.0, 0.42, 0.42)}
 const NARRATION_COLOR := Color(0.92, 0.92, 0.92)
-## Typing sound per voice (see Sound.blip); narration and thoughts share the soft one.
+## Typing sound per voice (see Sound.blip); narration has the soft one.
 const SPEAKER_BLIPS := {"ZP-SYS": "sys", "PROCTOR": "proctor"}
 ## One blip every this many typed characters.
 const BLIP_EVERY := 3
-const THOUGHT_COLOR := Color(0.72, 0.76, 0.82)
 
 var _lines := {}
 ## Every line shown this session, oldest first: {"text": String, "color": Color}. Read by the
@@ -224,7 +222,7 @@ func _show_queue() -> void:
 		typing.tween_property(_label, "visible_ratio", 1.0, type_time)
 		var elapsed := 0.0
 		var blipped := 0
-		var blip_voice: String = SPEAKER_BLIPS.get(line.get("speaker", ""), "thought")
+		var blip_voice: String = SPEAKER_BLIPS.get(line.get("speaker", ""), "narration")
 		if line.get("speaker", "") == "PROCTOR":
 			Sound.play_ui("static", -6.0)
 		_skip_requested = false
@@ -255,11 +253,8 @@ func _show_queue() -> void:
 
 func _display(line: Dictionary, text: String) -> void:
 	var speaker: String = line.get("speaker", "")
-	var body := "[color=#%s]%s[/color]" % [SPEAKER_COLORS.get(speaker, NARRATION_COLOR).to_html(false), text]
-	if line.get("thought", false):
-		body = "[i][color=#%s]%s[/color][/i]" % [THOUGHT_COLOR.to_html(false), text]
-	_label.text = body
-	var color: Color = THOUGHT_COLOR if line.get("thought", false) else SPEAKER_COLORS.get(speaker, NARRATION_COLOR)
+	var color: Color = SPEAKER_COLORS.get(speaker, NARRATION_COLOR)
+	_label.text = "[color=#%s]%s[/color]" % [color.to_html(false), text]
 	history.append({"text": text, "color": color})
 	_label.visible_ratio = 0.0
 	print("[story] %s: %s" % [speaker, text])
