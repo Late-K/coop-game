@@ -490,6 +490,15 @@ def radio_numbers():
     return crush(normalize(mix(length(6.5), *layers), 0.5), bits=8)
 
 
+def shove():
+    """A shove: a dull body thud and a scuff of cloth."""
+    n = length(0.22)
+    thud = mul(lowpass(noise(n, 42), 400), envelope(n, 0.002, 0.05))
+    scuff = mul(bandpass(noise(n, 43), 800, 2500), envelope(n, 0.01, 0.06))
+    body = mul(tone(lambda t: 90 - 120 * t, n), envelope(n, 0.002, 0.07))
+    return crush(normalize(mix(n, thud, gain(scuff, 0.4), gain(body, 0.8)), 0.6), bits=9)
+
+
 def sting_chapter():
     n = length(7)
     wobble = lambda t: 1 + 0.004 * math.sin(TAU * 0.3 * t)
@@ -529,6 +538,7 @@ SOUNDS = {
     "static": (static_burst, False),
     "radio_key": (radio_key, False),
     "radio_unkey": (radio_unkey, False),
+    "shove": (shove, False),
     "radio_static": (radio_static, True),
     "radio_beacon": (radio_beacon, True),
     "radio_numbers": (radio_numbers, True),

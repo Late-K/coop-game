@@ -18,6 +18,10 @@ extends Node
 ## only reach a radio tuned to the sender's frequency; slightly off comes through as static
 ## and garble, further off not at all. So tuning away loses the partner, unless they follow.
 ##
+## The radio can be switched off (RADIO tab: POWER): no voice or messages either way, no
+## stations, nothing on the HUD, and the map goes dark. Special enemies track any radio that
+## is on, so switching off hides you from them, at the cost of your partner.
+##
 ## Text messages travel the same way, for players without a microphone. They are written
 ## and read only in the RADIO tab; the HUD just says one is waiting. A player whose
 ## microphone is closed gets noticed: PROCTOR says so, once per session, and keeps count.
@@ -79,6 +83,7 @@ var test_tone := false
 ## True when the microphone could not be opened (none, or blocked by the OS).
 var mic_failed := false
 var frequency := HOME_FREQUENCY
+var powered := true
 ## The station heard best on the current frequency (null for none), and how well (0..1).
 var station: RadioSignal = null
 var station_strength := 0.0
@@ -120,6 +125,7 @@ var _heard := {} # RadioSignal -> true once heard clearly this session
 var _level_time := 0.0
 var _mic_noticed := false
 var _wants_mic := false
+var _was_online := false
 
 
 func _ready() -> void:
@@ -148,7 +154,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	var online := Net.is_online() and not multiplayer.get_peers().is_empty()
 	_set_mic(online)
-	var want := online and not typing and Input.is_action_pressed("radio")
+	var want := online and powered and not typing and Input.is_action_pressed("radio")
 	if want != transmitting:
 		_set_transmitting(want)
 	if transmitting:
@@ -160,12 +166,25 @@ func _process(delta: float) -> void:
 	_feed_playback(delta)
 	if receiving and not online:
 		_end_receiving()
-	if not online:
-		_reset_session()
+	if _was_online and not online:
+		_reset_session() # the session ended
+	_was_online = online
 	_update_stations()
 	_check_mic_notice(delta)
 	if tuner_open:
 		unread = 0
+
+
+func set_powered(on: bool) -> void:
+	if on == powered:
+		return
+	powered = on
+	if not on:
+		if transmitting:
+			_set_transmitting(false)
+		if receiving:
+			_end_receiving()
+	Sound.play_ui("radio_key" if on else "radio_unkey", -6.0, 0.8)
 
 
 func on_home_channel() -> bool:
@@ -190,7 +209,7 @@ static func reception(tuned: float, sent: float) -> float:
 ## Sends a text message on the current frequency. Only a radio tuned to it receives it.
 func send_chat(text: String) -> void:
 	text = text.strip_edges().left(CHAT_MAX)
-	if text.is_empty() or not Net.is_online():
+	if text.is_empty() or not Net.is_online() or not powered:
 		return
 	MetaSave.session["radio_presses"] += 1
 	if mic_failed:
@@ -202,6 +221,8 @@ func send_chat(text: String) -> void:
 ## One line for the HUD and lobby: "TX [||||....]" while talking, "RX  signal [||.]" while
 ## listening, empty otherwise.
 func status_text() -> String:
+	if not powered:
+		return ""
 	var lines: PackedStringArray = []
 	var tx := "TX" if on_home_channel() else "TX %.1f" % frequency
 	if transmitting and mic_failed:
@@ -341,7 +362,7 @@ func _send(samples: PackedFloat32Array) -> void:
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func _voice(packet: PackedByteArray) -> void:
-	if packet.size() <= HEADER or packet.size() > PACKET_SAMPLES + HEADER:
+	if not powered or packet.size() <= HEADER or packet.size() > PACKET_SAMPLES + HEADER:
 		return
 	var heard := reception(frequency, packet.decode_u16(1) / 10.0)
 	if heard <= 0.0:
@@ -405,7 +426,7 @@ func _end_receiving() -> void:
 @rpc("any_peer", "call_remote", "reliable")
 func _chat(text: String, sent: float) -> void:
 	var heard := reception(frequency, sent)
-	if heard <= 0.0:
+	if heard <= 0.0 or not powered:
 		return # nobody was listening on that frequency
 	text = text.left(CHAT_MAX)
 	if heard < 1.0:
@@ -433,6 +454,10 @@ func _add_chat(line: String, outgoing: bool) -> void:
 func _update_stations() -> void:
 	station = null
 	station_strength = 0.0
+	if not powered:
+		_static_player.stop()
+		_station_player.stop()
+		return
 	for node in get_tree().get_nodes_in_group("radio_signals"):
 		var strength: float = node.strength_at(frequency, listener_position)
 		if strength > station_strength:
@@ -463,6 +488,7 @@ func _set_loop(player: AudioStreamPlayer, amount: float, offset_db: float) -> vo
 
 func _reset_session() -> void:
 	tune(HOME_FREQUENCY)
+	powered = true
 	_heard.clear()
 	chat_history.clear()
 	unread = 0

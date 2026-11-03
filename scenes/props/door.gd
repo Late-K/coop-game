@@ -20,6 +20,7 @@ var is_open := false
 
 func _ready() -> void:
 	add_to_group(SaveGame.SAVED_GROUP)
+	add_to_group("doors")
 	if start_open:
 		is_open = true
 		position.y = _closed_y - OPEN_DROP

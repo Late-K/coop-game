@@ -58,6 +58,7 @@ func _ready() -> void:
 	if not continuing:
 		get_tree().create_timer(INTRO_DELAY).timeout.connect(Story.play.bind(intro_lines))
 	SaveGame.level_started(self)
+	_bake_navigation.call_deferred()
 
 
 ## Server only. Shows the end card on both machines, then both return to the menu.
@@ -71,6 +72,43 @@ func _finish_chapter() -> void:
 	Story.show_card(chapter_title.to_upper())
 	var main := get_tree().get_first_node_in_group("main")
 	main.end_session_after(CHAPTER_END_DELAY, "%s complete." % chapter_title)
+
+
+## Server: the enemies' navigation map, baked from the level's solid geometry (grid, CSG,
+## props) once everything is in place. Doors don't count as walls: a closed one simply
+## stops an enemy in front of it.
+func _bake_navigation() -> void:
+	var mesh := NavigationMesh.new()
+	mesh.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_STATIC_COLLIDERS
+	mesh.geometry_collision_mask = 1
+	mesh.cell_size = 0.25
+	mesh.cell_height = 0.25
+	mesh.agent_radius = 0.45
+	mesh.agent_height = 1.8
+	mesh.agent_max_climb = 0.3
+	var source := NavigationMeshSourceGeometryData3D.new()
+	# Doors and painted grids are left out of the parse: doors aren't walls, and a grid
+	# describes its own walkable floor (LevelGrid.add_navigation_source).
+	var doors := get_tree().get_nodes_in_group("doors")
+	var grids := find_children("*", "LevelGrid", true, false)
+	for node: CollisionObject3D in doors:
+		node.collision_layer = 0
+	for grid: LevelGrid in grids:
+		grid.collision_layer = 0
+	NavigationServer3D.parse_source_geometry_data(mesh, source, self)
+	for node: CollisionObject3D in doors:
+		node.collision_layer = 1
+	for grid: LevelGrid in grids:
+		grid.collision_layer = 1
+		grid.add_navigation_source(source)
+	var started := Time.get_ticks_msec()
+	NavigationServer3D.bake_from_source_geometry_data(mesh, source)
+	var region := NavigationRegion3D.new()
+	region.name = "Navigation"
+	region.navigation_mesh = mesh
+	add_child(region)
+	print("[level] navigation: %d polygons from %d vertices in %d ms" % [mesh.get_polygon_count(),
+			source.get_vertices().size(), Time.get_ticks_msec() - started])
 
 
 ## Server only. Creates a replicated object (e.g. a pickup arriving through a tube).

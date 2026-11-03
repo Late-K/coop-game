@@ -1,0 +1,16 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/enemies/enemy.tscn" id="1_enemy"]
+
+[node name="Listener" instance=ExtResource("1_enemy")]
+look = 3
+max_health = 40
+move_speed = 1.7
+attack_damage = 30
+revive_time = 20.0
+sight_range = 0.0
+hearing = 0.5
+radio_range = 16.0
+
+[node name="Model" parent="." index="1"]
+look = 3

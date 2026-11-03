@@ -31,6 +31,14 @@ const RELOAD_TIME := 0.9
 const SHOT_RANGE := 25.0
 const SHOT_DAMAGE := 10
 const SHOT_MASK := 11 # physics layers 1 + 2 + 4: world, enemies and players (friendly fire)
+## How far noises carry to enemies (metres): each footstep, each shot.
+const STEP_NOISE := 4.0
+const GUNSHOT_NOISE := 24.0
+## The shove: reach, cone (degrees either side), knockback, and how often.
+const SHOVE_RANGE := 1.6
+const SHOVE_ANGLE := 70.0
+const SHOVE_COOLDOWN := 0.8
+const SHOVED_SPEED := 4.0
 ## Seconds the dead player watches themselves fall before the screen goes black.
 const DEATH_WATCH := 0.6
 ## Seconds a collapsed player stays out before waking by a lamp.
@@ -52,6 +60,8 @@ var feels_cold := false
 # Synced from the owner to the other peer.
 var health := MAX_HEALTH
 var is_aiming := false
+## Synced: whether this player's radio is switched on (special enemies track radios).
+var radio_on := true
 
 # Only meaningful on the owning peer.
 var inventory := Inventory.new()
@@ -81,6 +91,9 @@ var _last_health := MAX_HEALTH
 ## Waiting out a reload (the partner died): black screen, standing still.
 var _reload_wait := false
 var _partner_save_status := SaveGame.Status.AWAY
+var _shove_cooldown := 0.0
+## A shove from the partner: pushed back, fading out.
+var _knockback := Vector3.ZERO
 
 @onready var model: CharacterModel = $Model
 @onready var nameplate: Label3D = $Nameplate
@@ -177,6 +190,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_try_fire()
 	elif event.is_action_pressed("reload"):
 		_reload()
+	elif event.is_action_pressed("shove"):
+		_shove()
 	elif event.is_action_pressed("inventory"):
 		get_viewport().set_input_as_handled()
 		open_inventory()
@@ -199,6 +214,8 @@ func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y -= gravity * delta
 	_fire_cooldown = maxf(_fire_cooldown - delta, 0.0)
+	_shove_cooldown = maxf(_shove_cooldown - delta, 0.0)
+	radio_on = Radio.powered
 
 	var frozen := (focus != null or _cutting or _in_cutaway or is_dead or inventory_screen.visible
 			or _pause_menu_open() or save_prompt.visible or _reload_wait)
@@ -214,8 +231,9 @@ func _physics_process(delta: float) -> void:
 	var speed := AIM_SPEED if is_aiming else WALK_SPEED
 	# The top-down camera never rotates, so screen-up is always world -Z.
 	var direction := Vector3(input.x, 0.0, input.y)
-	velocity.x = direction.x * speed
-	velocity.z = direction.z * speed
+	velocity.x = direction.x * speed + _knockback.x
+	velocity.z = direction.z * speed + _knockback.z
+	_knockback = _knockback.lerp(Vector3.ZERO, 1.0 - exp(-8.0 * delta))
 	move_and_slide()
 
 	var look_direction := _get_aim_direction() if is_aiming else direction
@@ -689,6 +707,7 @@ func _finish_reload() -> void:
 func _request_shot(origin: Vector3, direction: Vector3) -> void:
 	if not multiplayer.is_server() or multiplayer.get_remote_sender_id() != get_multiplayer_authority():
 		return
+	Enemy.make_noise(get_tree(), origin, GUNSHOT_NOISE)
 	var end := origin + direction.normalized() * SHOT_RANGE
 	var query := PhysicsRayQueryParameters3D.create(origin, end, SHOT_MASK, [get_rid()])
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
@@ -737,6 +756,46 @@ func _update_model() -> void:
 @rpc("authority", "call_remote", "unreliable")
 func _play_gesture(gesture: String) -> void:
 	model.play_gesture(gesture)
+	if gesture == "shove":
+		Sound.play_at("shove", global_position, -2.0, 15.0)
+
+
+## A short push: knocks back and staggers whatever is in front (an enemy, or the partner).
+## No damage. The server decides what it hits.
+func _shove() -> void:
+	if _shove_cooldown > 0.0 or is_aiming:
+		return
+	_shove_cooldown = SHOVE_COOLDOWN
+	model.play_gesture("shove")
+	_play_gesture.rpc("shove")
+	Sound.play_at("shove", global_position, -2.0, 15.0)
+	_request_shove.rpc_id(1, -global_basis.z)
+
+
+@rpc("any_peer", "call_local", "reliable")
+func _request_shove(direction: Vector3) -> void:
+	if not multiplayer.is_server() or multiplayer.get_remote_sender_id() != get_multiplayer_authority():
+		return
+	for body: Node3D in get_tree().get_nodes_in_group("enemies") + get_tree().get_nodes_in_group("players"):
+		if body == self:
+			continue
+		var to := body.global_position - global_position
+		to.y = 0.0
+		if to.length() > SHOVE_RANGE or (to.length() > 0.3 and rad_to_deg(direction.angle_to(to.normalized())) > SHOVE_ANGLE):
+			continue
+		if body is Enemy:
+			body.shove(direction)
+		elif body is Player:
+			body.receive_shove.rpc_id(body.get_multiplayer_authority(), direction)
+
+
+## Server -> owner: the partner shoved this player.
+@rpc("any_peer", "call_local", "reliable")
+func receive_shove(direction: Vector3) -> void:
+	if multiplayer.get_remote_sender_id() != 1 or not is_multiplayer_authority():
+		return
+	_knockback = Vector3(direction.x, 0, direction.z).normalized() * SHOVED_SPEED
+	model.play_hurt()
 
 
 ## Called by the server (enemies) on the owning peer.
@@ -854,6 +913,8 @@ func _update_footsteps() -> void:
 		var local := is_multiplayer_authority()
 		# Soft, like Signalis: steps sit under the bed instead of ticking over it.
 		Sound.play_at(_surface_footsteps(), global_position, -16.0 if local else -12.0, 18.0, 0.12)
+		if multiplayer.is_server():
+			Enemy.make_noise(get_tree(), global_position, STEP_NOISE)
 
 
 func _surface_footsteps() -> String:

@@ -1,26 +1,12 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene format=3]
 
 [ext_resource type="Script" path="res://scenes/enemies/enemy.gd" id="1_enemy"]
 [ext_resource type="Script" path="res://scenes/interaction/interactable.gd" id="2_interactable"]
+[ext_resource type="PackedScene" path="res://scenes/characters/character_model.tscn" id="3_model"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.35
 height = 1.8
-
-[sub_resource type="CapsuleMesh" id="CapsuleMesh_body"]
-radius = 0.35
-height = 1.8
-
-[sub_resource type="StandardMaterial3D" id="Material_body"]
-albedo_color = Color(0.32, 0.07, 0.08, 1)
-
-[sub_resource type="BoxMesh" id="BoxMesh_eyes"]
-size = Vector3(0.3, 0.06, 0.08)
-
-[sub_resource type="StandardMaterial3D" id="Material_eyes"]
-albedo_color = Color(1, 0.2, 0.1, 1)
-emission_enabled = true
-emission = Color(1, 0.2, 0.1, 1)
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_finish"]
 radius = 1.0
@@ -46,17 +32,14 @@ script = ExtResource("1_enemy")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 shape = SubResource("CapsuleShape3D_body")
 
-[node name="Body" type="Node3D" parent="."]
+[node name="Model" parent="." instance=ExtResource("3_model")]
+look = 2
 
-[node name="Mesh" type="MeshInstance3D" parent="Body"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
-mesh = SubResource("CapsuleMesh_body")
-surface_material_override/0 = SubResource("Material_body")
-
-[node name="Eyes" type="MeshInstance3D" parent="Body"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -0.32)
-mesh = SubResource("BoxMesh_eyes")
-surface_material_override/0 = SubResource("Material_eyes")
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+path_desired_distance = 0.5
+target_desired_distance = 0.5
+radius = 0.4
+path_max_distance = 3.0
 
 [node name="FinishPoint" type="Area3D" parent="."]
 script = ExtResource("2_interactable")

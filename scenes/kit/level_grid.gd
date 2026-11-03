@@ -47,6 +47,22 @@ func _ready() -> void:
 		_build_void()
 
 
+## Walkable ground for the enemies' navigation map (Level bakes it): a quad on every floor
+## cell. Walls, low pieces and empty cells are simply not walkable; the bake keeps agents
+## clear of the edges.
+func add_navigation_source(source: NavigationMeshSourceGeometryData3D) -> void:
+	var faces := PackedVector3Array()
+	for cell in get_used_cells():
+		if not mesh_library.get_item_name(get_cell_item(cell)).begins_with("floor_"):
+			continue
+		var a := Vector3(cell.x, cell.y * Kit.CELL.y, cell.z)
+		var b := a + Vector3(1, 0, 0)
+		var c := a + Vector3(1, 0, 1)
+		var d := a + Vector3(0, 0, 1)
+		faces.append_array([a, b, c, a, c, d, a, c, b, a, d, c]) # both windings: one faces up
+	source.add_faces(faces, global_transform)
+
+
 func _build_void() -> void:
 	var used := get_used_cells()
 	if used.is_empty():

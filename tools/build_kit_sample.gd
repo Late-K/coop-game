@@ -131,6 +131,10 @@ func _furnish() -> void:
 	_add_box_shape(yard, Vector3(6, 3, 6))
 	_place(PROPS + "barrel.tscn", "Props", Vector3(28.5, -0.3, 17), Basis(Vector3.RIGHT, 0.25))
 
+	# Enemies: a husk in the storage room, a listener by the yard (it tracks radios).
+	_place("res://scenes/enemies/enemy.tscn", "Placements", Vector3(29, 0, 2), FACE_NORTH)
+	_place("res://scenes/enemies/listener.tscn", "Placements", Vector3(27, 0, 15))
+
 
 ## One camera zone per room, sized to the room: the camera frames it whole. Corridors get
 ## none: the camera follows the player through them.

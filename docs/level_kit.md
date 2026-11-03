@@ -75,6 +75,11 @@ Interactive pieces live with their systems: doors (`scenes/props/door.tscn`, in 
 - **TemperatureZone**: cold areas. **StoryTrigger** and **ExamineSpot** (Story): lines and narration.
 - **Placements**: anything created or destroyed during play (pickups, enemies). The server re-spawns them for both players.
 
+## Enemies
+- Put enemies under **Placements**: `scenes/enemies/enemy.tscn` (the husk) or `listener.tscn`. Their senses are exports on the root: sight range and angle, hearing, radio range, speed, health, damage.
+- **The navigation map bakes itself** at level start from the grid's floors, CSG and props. Doors count as open: an enemy walks up to a closed door and stops there. Props (crates, shelves) are obstacles.
+- Players make noise: footsteps carry 4 m, gunshots 24 m. A husk that hears one comes to look; a listener tracks any radio that's on within 16 m, so place listeners where switching the radio off (losing the partner and the map) is the price of getting past.
+
 ## Saving and dying
 - **Save rooms come in pairs**, one on each player's side, and sparse. Each needs `scenes/props/save_terminal.tscn` (terminal plus respawn pod): give it **1.2 m clear to its right** for the pod and about **1.5 m in front**, back against a wall. An item box nearby.
 - **Anything with state that a reload must put back** joins the `saved` group and has `save_state() -> Variant`, `load_state(state)` (applied on both machines, instantly: the screen is black) and an exported `keep_on_reload`. Doors, the heater, code puzzles, the beacon network and story triggers already do. Set `keep_on_reload` per puzzle: on means a death does not undo it (a learned code), off means it resets (power, valves, lamps).

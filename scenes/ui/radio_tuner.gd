@@ -23,6 +23,7 @@ var _transcript: Label
 var _messages := VBoxContainer.new()
 var _chat_input := LineEdit.new()
 var _home: Button
+var _power: Button
 var _scope := Control.new()
 var _held_direction := 0
 var _held := 0.0
@@ -40,6 +41,9 @@ func _init() -> void:
 	status.add_theme_constant_override("separation", 8)
 	add_child(status)
 	status.add_child(InventoryScreen._label("RADIO", 22, InventoryScreen.PHOSPHOR))
+	_power = InventoryScreen._button("POWER: ON", 14)
+	_power.pressed.connect(func() -> void: Radio.set_powered(not Radio.powered))
+	status.add_child(_power)
 	_frequency_label = InventoryScreen._label("", 34, InventoryScreen.PHOSPHOR)
 	status.add_child(_frequency_label)
 	_channel_label = InventoryScreen._label("", 14, InventoryScreen.PHOSPHOR)
@@ -95,7 +99,9 @@ func _init() -> void:
 
 
 func open() -> void:
-	# Down from the dial: the message field, then the partner channel button.
+	# Down from the dial: the message field, then the partner channel button. Up: power.
+	dial.focus_neighbor_top = dial.get_path_to(_power)
+	_power.focus_neighbor_bottom = _power.get_path_to(dial)
 	dial.focus_neighbor_bottom = dial.get_path_to(_chat_input)
 	_chat_input.focus_neighbor_top = _chat_input.get_path_to(dial)
 	_chat_input.focus_neighbor_bottom = _chat_input.get_path_to(_home)
@@ -123,6 +129,18 @@ func _process(delta: float) -> void:
 	_time += delta
 	_tune_held(delta)
 
+	_power.text = "POWER: ON" if Radio.powered else "POWER: OFF"
+	_chat_input.editable = Radio.powered
+	if not Radio.powered:
+		_frequency_label.text = "----- MHz"
+		_channel_label.text = "POWER OFF\nNo voice, messages or stations. Nothing can track it."
+		_channel_label.modulate = PlayerHud.RADIO_COLOR
+		_meter_label.text = ""
+		_transcript.text = ""
+		_update_messages()
+		dial.queue_redraw()
+		_scope.queue_redraw()
+		return
 	var home := Radio.on_home_channel()
 	_frequency_label.text = "%.1f MHz" % Radio.frequency
 	_channel_label.text = "PARTNER CHANNEL" if home \
@@ -140,7 +158,7 @@ func _process(delta: float) -> void:
 ## One step on press, then a sweep while held.
 func _tune_held(delta: float) -> void:
 	var direction := 0
-	if dial.has_focus():
+	if dial.has_focus() and Radio.powered:
 		direction = int(Input.is_action_pressed("ui_right") or Input.is_action_pressed("move_right")) \
 				- int(Input.is_action_pressed("ui_left") or Input.is_action_pressed("move_left"))
 	if direction == 0:
@@ -213,6 +231,10 @@ func _draw_dial() -> void:
 	var phosphor := InventoryScreen.PHOSPHOR
 	var dim := InventoryScreen.DIM
 	dial.draw_rect(Rect2(Vector2.ZERO, area), Color(0.02, 0.05, 0.05))
+	if not Radio.powered:
+		if dial.has_focus():
+			dial.draw_rect(Rect2(Vector2.ZERO, area), dim.lightened(0.2), false, 1.0)
+		return
 	var center := area.x / 2.0
 	var per_mhz := area.x / (SCALE_SPAN * 2.0)
 	for i in range(floori((Radio.frequency - SCALE_SPAN) * 5.0), ceili((Radio.frequency + SCALE_SPAN) * 5.0) + 1):
@@ -244,6 +266,8 @@ func _draw_scope() -> void:
 	var area := _scope.size
 	_scope.draw_rect(Rect2(Vector2.ZERO, area), Color(0.02, 0.05, 0.05))
 	_scope.draw_line(Vector2(0, area.y / 2.0), Vector2(area.x, area.y / 2.0), InventoryScreen.DIM, 1.0)
+	if not Radio.powered:
+		return
 	var strength := Radio.station_strength
 	var shape := Radio.station.shape if Radio.station else ""
 	var noise := 0.0 if Radio.on_home_channel() else (1.0 - strength) * 0.7

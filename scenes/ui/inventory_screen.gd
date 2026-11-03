@@ -292,7 +292,7 @@ func refresh() -> void:
 		_hint.text = "[Tab] close   [Mouse wheel] scroll"
 		return
 	if _tab == "radio":
-		_hint.text = "[Left/Right] tune, hold to sweep   [Down] write a message, [Enter] send   [Tab] close"
+		_hint.text = "[Left/Right] tune   [Up] power   [Down] write a message, [Enter] send   [Tab] close"
 		_apply_notice()
 		return
 

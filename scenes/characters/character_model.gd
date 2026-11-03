@@ -12,10 +12,13 @@ extends Node3D
 ## Looks: the Subject is a pale, smooth, too-clean figure that moves with mechanical
 ## precision and never breathes. The Visitor is bulky cold-weather gear (orange parka, hood,
 ## backpack) and moves like a person: breathing, heavier steps.
+## Enemies: the husk is a wrecked, filthy Subject-like figure with red eyes, hunched,
+## reaching, breathing raggedly. The listener is tall, dark and eyeless, a dish where its
+## face should be, its head turning slowly as it listens.
 ##
 ## Faces -Z (the player's forward). Origin at the feet.
 
-enum Look { SUBJECT, VISITOR }
+enum Look { SUBJECT, VISITOR, HUSK, LISTENER }
 ## LIVE follows the gameplay state; the others are fixed poses for set dressing.
 enum Pose { LIVE, CORPSE, WAITING }
 
@@ -45,6 +48,8 @@ var _rig := Node3D.new()
 var _joints := {} # name -> Node3D pivot
 var _current := {} # name -> Vector3 rotation (the blended pose)
 var _gun: Node3D
+var _rig_position := Vector3.ZERO
+var _rig_rotation := Vector3.ZERO
 var _since_pose := 0.0
 var _time := 0.0
 var _phase := 0.0
@@ -73,7 +78,8 @@ func play_hurt() -> void:
 	_hurt = 1.0
 
 
-## Short arm gestures: "interact" (reach forward) or "shove" (both arms thrust).
+## Short arm gestures: "interact" (reach forward), "shove" (both arms thrust) or "attack"
+## (an enemy's raised swipe).
 func play_gesture(gesture: String) -> void:
 	_gesture = gesture
 	_gesture_time = 0.0
@@ -112,8 +118,10 @@ func _apply_pose(step: float) -> void:
 		var to: Vector3 = target.get(joint, Vector3.ZERO)
 		_current[joint] = (_current[joint] as Vector3).lerp(to, blend)
 		_joints[joint].rotation = _current[joint]
-	_rig.position = target["rig_position"]
-	_rig.rotation = target["rig_rotation"]
+	_rig_position = _rig_position.lerp(target["rig_position"], blend)
+	_rig_rotation = _rig_rotation.lerp(target["rig_rotation"], blend)
+	_rig.position = _rig_position
+	_rig.rotation = _rig_rotation
 	if _gun:
 		_gun.visible = aiming and pose == Pose.LIVE and not dead
 
@@ -131,7 +139,8 @@ func _target_pose() -> Dictionary:
 	if dead:
 		return _death_pose(p)
 
-	var machine := look == Look.SUBJECT
+	var machine := look == Look.SUBJECT or look == Look.LISTENER
+	var husk := look == Look.HUSK
 	var walk := clampf(_speed / 4.0, 0.0, 1.0)
 	var swing := sin(_phase)
 	# Legs: alternate, the back leg's knee folds as it lifts.
@@ -142,7 +151,7 @@ func _target_pose() -> Dictionary:
 	var bob := absf(cos(_phase)) * (0.02 if machine else 0.045) * walk
 	p["rig_position"] = Vector3(0, bob - 0.02 * walk, 0)
 	# Torso: the Visitor leans into the walk and breathes; the Subject does neither.
-	var breath := 0.0 if machine else sin(_time * 1.7) * 0.025
+	var breath := 0.0 if machine else (sin(_time * 2.6) * 0.05 if husk else sin(_time * 1.7) * 0.025)
 	p["spine"] = Vector3(-0.08 * walk + breath - (0.0 if machine else 0.06), sin(_phase) * 0.05 * walk, 0)
 	p["neck"] = Vector3(0.05 * walk - breath, 0, 0)
 	# Arms swing against the legs.
@@ -151,6 +160,20 @@ func _target_pose() -> Dictionary:
 	p["shoulder_r"] = Vector3(swing * arm_swing, 0, 0.12)
 	p["elbow_l"] = Vector3(0.2 + 0.2 * walk, 0, 0)
 	p["elbow_r"] = Vector3(0.2 + 0.2 * walk, 0, 0)
+	if husk:
+		# Hunched, knees bent, arms reaching ahead of it.
+		p["spine"] += Vector3(-0.35, 0, 0)
+		p["neck"] += Vector3(0.3, 0, 0)
+		p["shoulder_l"] = Vector3(0.35 - swing * 0.15 * walk, 0, -0.15)
+		p["shoulder_r"] = Vector3(0.35 + swing * 0.15 * walk, 0, 0.15)
+		p["hip_l"] += Vector3(0.1, 0, 0)
+		p["hip_r"] += Vector3(0.1, 0, 0)
+		p["knee_l"] += Vector3(-0.2, 0, 0)
+		p["knee_r"] += Vector3(-0.2, 0, 0)
+	elif look == Look.LISTENER:
+		# Standing still, the dish turns and tilts, searching.
+		var listen := 1.0 - walk
+		p["neck"] = Vector3(0.1 * sin(_time * 0.9) * listen, 0.5 * sin(_time * 0.6) * listen, 0.3 * sin(_time * 0.7) * listen)
 
 	if aiming:
 		# Two-handed: right arm straight at the target, left arm bracing it.
@@ -172,6 +195,14 @@ func _target_pose() -> Dictionary:
 				p["shoulder_" + side] = (p["shoulder_" + side] as Vector3).lerp(Vector3(PI / 2, 0, 0), k)
 				p["elbow_" + side] = (p["elbow_" + side] as Vector3).lerp(Vector3.ZERO, k)
 			p["spine"] = (p["spine"] as Vector3).lerp(Vector3(-0.3, 0, 0), k)
+		elif _gesture == "attack":
+			# Both arms rise over the head, then come down in a swipe.
+			var g := clampf(_gesture_time / 0.6, 0.0, 1.0)
+			var lift := 2.6 * (g / 0.45) if g < 0.45 else lerpf(2.6, 0.3, (g - 0.45) / 0.55)
+			for side in ["l", "r"]:
+				p["shoulder_" + side] = Vector3(lift, 0, 0)
+				p["elbow_" + side] = Vector3(0.4, 0, 0)
+			p["spine"] = Vector3(0.15 if g < 0.45 else -0.45, 0, 0)
 	if _hurt > 0.0:
 		p["spine"] += Vector3(0.4, 0, 0) * _hurt
 		p["neck"] += Vector3(0.3, 0, 0) * _hurt
@@ -249,22 +280,45 @@ func _build() -> void:
 	_joints.clear()
 	_current.clear()
 	var subject := look == Look.SUBJECT
-	var suit := _material(Color(0.8, 0.82, 0.84) if subject else Color(0.9, 0.48, 0.22))
-	var skin := _material(Color(0.86, 0.87, 0.88) if subject else Color(0.62, 0.48, 0.4))
-	var dark := _material(Color(0.32, 0.34, 0.36) if subject else Color(0.14, 0.15, 0.17))
-	var trousers := _material(Color(0.72, 0.74, 0.76) if subject else Color(0.22, 0.25, 0.3))
-	var bulk := 1.0 if subject else 1.18 # the Visitor's layers of clothing
+	var visitor := look == Look.VISITOR
+	# suit, skin, dark, trousers, bulk
+	var palette: Array = {
+		Look.SUBJECT: [Color(0.8, 0.82, 0.84), Color(0.86, 0.87, 0.88), Color(0.32, 0.34, 0.36), Color(0.72, 0.74, 0.76), 1.0],
+		Look.VISITOR: [Color(0.9, 0.48, 0.22), Color(0.62, 0.48, 0.4), Color(0.14, 0.15, 0.17), Color(0.22, 0.25, 0.3), 1.18],
+		Look.HUSK: [Color(0.44, 0.41, 0.38), Color(0.5, 0.47, 0.45), Color(0.22, 0.11, 0.1), Color(0.36, 0.33, 0.31), 0.95],
+		Look.LISTENER: [Color(0.13, 0.13, 0.15), Color(0.2, 0.2, 0.23), Color(0.06, 0.06, 0.07), Color(0.11, 0.11, 0.13), 0.9],
+	}[look]
+	var suit := _material(palette[0])
+	var skin := _material(palette[1])
+	var dark := _material(palette[2])
+	var trousers := _material(palette[3])
+	var bulk: float = palette[4] # the Visitor's layers of clothing, the listener's thinness
+	_rig.scale = Vector3.ONE * (1.15 if look == Look.LISTENER else 1.0)
 
 	var hips := _joint("hips", _rig, Vector3(0, 0.92, 0))
 	_piece(hips, Vector3(0.34 * bulk, 0.18, 0.21 * bulk), Vector3(0, 0.02, 0), trousers)
 	var spine := _joint("spine", hips, Vector3(0, 0.1, 0))
 	_piece(spine, Vector3(0.42 * bulk, 0.48, 0.24 * bulk), Vector3(0, 0.24, 0), suit)
 	var neck := _joint("neck", spine, Vector3(0, 0.5, 0))
-	_piece(neck, Vector3(0.21, 0.24, 0.23), Vector3(0, 0.14, 0), skin)
+	if look != Look.LISTENER:
+		_piece(neck, Vector3(0.21, 0.24, 0.23), Vector3(0, 0.14, 0), skin)
 	if subject:
 		# A seam at the waist and a faint light at the nape: what it is, if you look.
 		_piece(spine, Vector3(0.43, 0.03, 0.25), Vector3(0, 0.02, 0), dark)
 		_piece(neck, Vector3(0.06, 0.04, 0.01), Vector3(0, 0.08, 0.12), _glow(Color(0.45, 0.95, 0.82)))
+	elif look == Look.HUSK:
+		# The same seam as the Subject, the nape light dead, stains, and red eyes.
+		_piece(spine, Vector3(0.41, 0.03, 0.24), Vector3(0, 0.02, 0), dark)
+		_piece(spine, Vector3(0.22, 0.2, 0.01), Vector3(0.06, 0.3, -0.125), dark)
+		_piece(spine, Vector3(0.12, 0.14, 0.01), Vector3(-0.1, 0.12, 0.125), dark)
+		_piece(neck, Vector3(0.16, 0.035, 0.01), Vector3(0, 0.17, -0.12), _glow(Color(1.0, 0.2, 0.1)))
+	elif look == Look.LISTENER:
+		# No face: a narrow head carrying a dish, and an antenna with a slow red light.
+		_piece(neck, Vector3(0.14, 0.3, 0.16), Vector3(0, 0.15, 0), skin)
+		_piece(neck, Vector3(0.44, 0.38, 0.03), Vector3(0, 0.22, -0.1), dark)
+		_piece(neck, Vector3(0.3, 0.26, 0.02), Vector3(0, 0.22, -0.12), suit)
+		_piece(neck, Vector3(0.02, 0.36, 0.02), Vector3(0.12, 0.48, 0.02), dark)
+		_piece(neck, Vector3(0.04, 0.04, 0.04), Vector3(0.12, 0.67, 0.02), _glow(Color(1.0, 0.15, 0.1)))
 	else:
 		# Hood up with a fur ruff, face in shadow, a backpack.
 		_piece(neck, Vector3(0.3, 0.32, 0.31), Vector3(0, 0.15, 0.03), suit)
@@ -278,9 +332,11 @@ func _build() -> void:
 		var shoulder := _joint("shoulder_" + s, spine, Vector3(0.25 * side * bulk, 0.42, 0))
 		_piece(shoulder, Vector3(0.1 * bulk, 0.3, 0.1 * bulk), Vector3(0, -0.14, 0), suit)
 		var elbow := _joint("elbow_" + s, shoulder, Vector3(0, -0.29, 0))
-		_piece(elbow, Vector3(0.09 * bulk, 0.27, 0.09 * bulk), Vector3(0, -0.13, 0), suit)
-		_piece(elbow, Vector3(0.08, 0.09, 0.09), Vector3(0, -0.3, 0), skin if subject else dark)
-		if s == "r":
+		# Enemies' forearms are longer than a person's.
+		var forearm := 0.27 if subject or visitor else 0.36
+		_piece(elbow, Vector3(0.09 * bulk, forearm, 0.09 * bulk), Vector3(0, -forearm / 2.0, 0), suit)
+		_piece(elbow, Vector3(0.08, 0.09, 0.09), Vector3(0, -forearm - 0.03, 0), skin if not visitor else dark)
+		if s == "r" and (subject or visitor):
 			# The pistol, shown only while aiming.
 			_gun = Node3D.new()
 			_gun.name = "Gun"
@@ -290,7 +346,7 @@ func _build() -> void:
 		var hip := _joint("hip_" + s, hips, Vector3(0.1 * side, -0.02, 0))
 		_piece(hip, Vector3(0.14 * bulk, 0.44, 0.15 * bulk), Vector3(0, -0.21, 0), trousers)
 		var knee := _joint("knee_" + s, hip, Vector3(0, -0.44, 0))
-		_piece(knee, Vector3(0.12 * bulk, 0.42, 0.13 * bulk), Vector3(0, -0.2, 0), trousers if subject else dark)
+		_piece(knee, Vector3(0.12 * bulk, 0.42, 0.13 * bulk), Vector3(0, -0.2, 0), dark if visitor else trousers)
 		_piece(knee, Vector3(0.12 * bulk, 0.08, 0.25), Vector3(0, -0.42, -0.05), dark)
 	for joint: String in _joints:
 		_current[joint] = Vector3.ZERO
