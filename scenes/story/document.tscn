@@ -1,0 +1,50 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/story/document.gd" id="1_doc"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_reach"]
+size = Vector3(1.2, 1.6, 1.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_paper"]
+size = Vector3(0.24, 0.006, 0.32)
+
+[sub_resource type="StandardMaterial3D" id="Material_paper"]
+albedo_color = Color(0.82, 0.8, 0.72, 1)
+emission_enabled = true
+emission = Color(0.82, 0.8, 0.72, 1)
+emission_energy_multiplier = 0.25
+
+[sub_resource type="BoxMesh" id="BoxMesh_line"]
+size = Vector3(0.16, 0.002, 0.012)
+
+[sub_resource type="StandardMaterial3D" id="Material_ink"]
+albedo_color = Color(0.2, 0.2, 0.22, 1)
+
+[node name="Document" type="Area3D"]
+script = ExtResource("1_doc")
+prompt = "Read"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+shape = SubResource("BoxShape3D_reach")
+
+[node name="Paper" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.94, 0, 0.34, 0, 1, 0, -0.34, 0, 0.94, 0, 0.003, 0)
+mesh = SubResource("BoxMesh_paper")
+surface_material_override/0 = SubResource("Material_paper")
+cast_shadow = 0
+
+[node name="Line1" type="MeshInstance3D" parent="Paper"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.004, -0.09)
+mesh = SubResource("BoxMesh_line")
+surface_material_override/0 = SubResource("Material_ink")
+
+[node name="Line2" type="MeshInstance3D" parent="Paper"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.004, -0.05)
+mesh = SubResource("BoxMesh_line")
+surface_material_override/0 = SubResource("Material_ink")
+
+[node name="Line3" type="MeshInstance3D" parent="Paper"]
+transform = Transform3D(0.7, 0, 0, 0, 1, 0, 0, 0, 1, -0.024, 0.004, -0.01)
+mesh = SubResource("BoxMesh_line")
+surface_material_override/0 = SubResource("Material_ink")

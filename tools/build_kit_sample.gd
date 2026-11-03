@@ -9,6 +9,7 @@ const OUT := "res://scenes/levels/kit_sample.tscn"
 const PROPS := "res://scenes/kit/props/"
 const FACE_NORTH := Basis(Vector3.UP, PI) # a prop's front (+Z) turned to face -Z
 const FACE_WEST := Basis(Vector3.UP, -PI / 2)
+const FACE_EAST := Basis(Vector3.UP, PI / 2)
 
 ## Item ids from tools/build_kit.gd.
 const FLOOR_TILES := 0
@@ -130,6 +131,37 @@ func _furnish() -> void:
 	_add(yard, "Zones", Vector3(27, 1.5, 16))
 	_add_box_shape(yard, Vector3(6, 3, 6))
 	_place(PROPS + "barrel.tscn", "Props", Vector3(28.5, -0.3, 17), Basis(Vector3.RIGHT, 0.25))
+
+	# Map: every room and the corridor, revealed by the floor plan on the lab's west wall.
+	for room: String in ROOMS:
+		var r: Array = ROOMS[room]
+		var map_room := MapRoom.new()
+		map_room.name = "Map" + room
+		map_room.size = Vector2(r[1] - r[0], r[3] - r[2])
+		map_room.label = room.to_upper()
+		map_room.area = "service_wing"
+		_add(map_room, "Story", Vector3((r[0] + r[1]) / 2.0, 0, (r[2] + r[3]) / 2.0))
+	var plan := _place("res://scenes/map/floor_plan.tscn", "Story", Vector3(1, 0, 6.5), FACE_EAST)
+	plan.area = "service_wing"
+	plan.area_name = "Service wing"
+	# Documents: one on a lab desk, one (reading differently for each role) in storage.
+	var memo := _place("res://scenes/story/document.tscn", "Story", Vector3(9.2, 0.81, 1.5))
+	memo.doc_id = "intake_procedure"
+	var log := _place("res://scenes/story/document.tscn", "Story", Vector3(24.5, 1.01, 6.5))
+	log.doc_id = "service_log"
+	# A note the Subject finds blacked out (censored_for in documents.json).
+	var note := _place("res://scenes/story/document.tscn", "Story", Vector3(3.2, 0.81, 1.5))
+	note.doc_id = "pod_note"
+	# Writing that reads differently for each player: paint is censored for the Subject (the
+	# default), code is the Subject's alone. It reads from the camera on north walls and
+	# floors (east/west walls are edge-on).
+	var paint := _place("res://scenes/story/wall_text.tscn", "Story", Vector3(27, 0.02, 9.5), Basis(Vector3.RIGHT, -PI / 2))
+	paint.message = "THERE WERE\nALWAYS TWO"
+	paint.letter_size = 0.45
+	var code := _place("res://scenes/story/wall_text.tscn", "Story", Vector3(6, 1.55, 1.01))
+	code.style = "code"
+	code.message = "D-01 // OPEN FOR\nOCCUPANT {iteration}"
+	code.letter_size = 0.2
 
 	# Enemies: a husk in the storage room, a listener by the yard (it tracks radios).
 	_place("res://scenes/enemies/enemy.tscn", "Placements", Vector3(29, 0, 2), FACE_NORTH)

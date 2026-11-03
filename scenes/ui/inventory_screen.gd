@@ -6,6 +6,7 @@ extends Control
 ## ITEMS: status (condition ECG, body temperature, equipped weapon), the six carried slots,
 ## and the selected item's description and actions (Use, Equip, Combine, Inspect, Drop).
 ## RADIO: the tuner (RadioTuner): find stations, at the cost of the partner channel.
+## MAP: the floor plans this player has found (MapView). FILES: documents read (FilesView).
 ## LOGS: every story line and message seen this session.
 ## Opened from an item box, the right column shows the box instead: choose a slot on either
 ## side to move it across. Opened from a device (tube, heater...), you choose which item to
@@ -58,6 +59,8 @@ var _item_icon := TextureRect.new()
 var _hint := Label.new()
 var _items_page := HBoxContainer.new()
 var _radio_page := RadioTuner.new()
+var _map_page := MapView.new()
+var _files_page := FilesView.new()
 var _logs_page := ScrollContainer.new()
 var _logs_list := VBoxContainer.new()
 var _actions_box := VBoxContainer.new()
@@ -97,7 +100,7 @@ func _ready() -> void:
 	page.add_child(header)
 	header.add_child(_label("ZP-SYS // OCCUPANT TERMINAL", 16, PHOSPHOR))
 	header.add_child(_spacer())
-	for tab in ["items", "radio", "logs"]:
+	for tab in ["items", "radio", "map", "files", "logs"]:
 		var button := _button(tab.to_upper(), 14)
 		button.pressed.connect(_show_tab.bind(tab))
 		header.add_child(button)
@@ -109,6 +112,9 @@ func _ready() -> void:
 	_items_page.size_flags_vertical = SIZE_EXPAND_FILL
 	_radio_page.size_flags_vertical = SIZE_EXPAND_FILL
 	page.add_child(_radio_page)
+	for extra: Control in [_map_page, _files_page]:
+		extra.size_flags_vertical = SIZE_EXPAND_FILL
+		page.add_child(extra)
 	_logs_page.size_flags_vertical = SIZE_EXPAND_FILL
 	_logs_page.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_logs_list.size_flags_horizontal = SIZE_EXPAND_FILL
@@ -133,6 +139,8 @@ func _ready() -> void:
 ## `target` is an item box's Inventory, an ItemTube, or null for the plain terminal.
 func open(owner_player: Player, target: Variant = null) -> void:
 	player = owner_player
+	_map_page.player = player
+	_files_page.player = player
 	box = target as Inventory
 	device = target as Node
 	_combine_from = -1
@@ -285,11 +293,21 @@ func refresh() -> void:
 	_items_page.visible = _tab == "items"
 	_logs_page.visible = _tab == "logs"
 	_radio_page.visible = _tab == "radio"
+	_map_page.visible = _tab == "map"
+	_files_page.visible = _tab == "files"
 	for tab in _tab_buttons:
 		_tab_buttons[tab].add_theme_color_override("font_color", PHOSPHOR if tab == _tab else DIM)
 	if _tab == "logs":
 		_refresh_logs()
 		_hint.text = "[Tab] close   [Mouse wheel] scroll"
+		return
+	if _tab == "map":
+		_hint.text = "[Tab] close"
+		_apply_notice()
+		return
+	if _tab == "files":
+		_hint.text = "[Up/Down] choose   [Tab] close"
+		_apply_notice()
 		return
 	if _tab == "radio":
 		_hint.text = "[Left/Right] tune   [Up] power   [Down] write a message, [Enter] send   [Tab] close"
@@ -409,6 +427,13 @@ func _draw_ecg() -> void:
 
 # --- actions --------------------------------------------------------------------
 
+## Opens straight on a tab (e.g. FILES on the document just read).
+func show_tab(tab: String, doc_id := "") -> void:
+	_show_tab(tab)
+	if tab == "files":
+		_files_page.open(doc_id)
+
+
 func _show_tab(tab: String) -> void:
 	_tab = tab
 	Radio.tuner_open = tab == "radio" and visible
@@ -417,6 +442,10 @@ func _show_tab(tab: String) -> void:
 		_slot_buttons[_selected].grab_focus()
 	elif tab == "radio" and visible:
 		_radio_page.open()
+	elif tab == "files" and visible:
+		_files_page.open()
+	elif tab == "map" and visible:
+		_tab_buttons["map"].grab_focus()
 
 
 func _on_slot_focused(index: int) -> void:

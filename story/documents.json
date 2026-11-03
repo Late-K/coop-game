@@ -1,0 +1,16 @@
+{
+	"intake_procedure": {
+		"title": "INTAKE PROCEDURE (REV. 9)",
+		"text": "Occupants are woken one at a time.\n\nDo not tell an occupant their number. Do not tell an occupant how many numbers came before theirs.\n\nIf an occupant asks about the pods in Storage, the answer is: maintenance.\n\nIf an occupant asks who wrote this procedure, the answer is: you did.\n\n- Facility administration"
+	},
+	"pod_note": {
+		"title": "NOTE, TAPED INSIDE A LOCKER",
+		"censored_for": "subject",
+		"text": "The occupant in pod 4 is not what the intake sheet says it is.\n\nIt eats when it is watched. It does not eat when it is not.\n\nIf it ever reads this, it will not be able to. They made sure of that."
+	},
+	"service_log": {
+		"title": "SERVICE LOG, UNIT 7",
+		"subject": "Unit 7 recalibrated. Unit 7 recalibrated. Unit 7 recalibrated.\n\nThe same entry fills every page, in the same hand, at the same minute. The last page is stamped with your occupant number: {iteration}.",
+		"visitor": "Unit 7 keeps walking the east corridor after shutdown. We stopped logging it.\n\nWhoever reads this: it is not looking for a way out. It is looking for a way in.\n\nThe handwriting changes halfway down the page, and keeps going after the last line, off the edge of the paper."
+	}
+}

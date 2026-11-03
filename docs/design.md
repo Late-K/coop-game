@@ -61,7 +61,7 @@ These are fixed before level design; rooms and puzzles are built around them.
 - *(suggestion)* Roster: a standard enemy that gets back up (exists), a blind listener that hunts radios, and one more decided with the level kit. Pathfinding on a navigation mesh.
 
 ### Roles
-- **The Visitor sees what the Subject can't:** writing on walls, certain bodies, PROCTOR's traces.
+- **The Visitor sees what the Subject can't:** writing on walls, certain bodies, PROCTOR's traces. Mostly these are there for both, but **censored for the Subject**: the writing glitches and won't settle, a document is blacked out. Something filters what the Subject is allowed to see, and only the Visitor can say what it says.
 - **The Subject sees the code:** hidden door IDs, machine states, PROCTOR's markers.
 - Both use the same per-role visibility (one machine shows a thing, the other doesn't), which is also how the game will show the two players different versions of the truth.
 - Unchanged: the Subject ignores the cold and has a mechanical ECG; the Visitor freezes. Both heal with med kits.
@@ -171,7 +171,7 @@ New systems this needs:
 - **The ZP-SYS occupant terminal (Tab)** is the inventory: a diegetic screen in the system's cold cyan. Because it is part of the facility, it is part of PROCTOR, and later chapters can glitch it, lie through it, or show each player different contents.
   - ITEMS: status (condition ECG, body temperature, equipped weapon), six slots, item description, and actions: Use, Equip, Combine, Inspect, Drop.
   - RADIO: the tuner and the radio's power switch (see Radio).
-  - MAP and FILES: see Core rules (planned).
+  - MAP and FILES: see Core rules (Map and documents).
   - LOGS: every line and message seen this session. Lines that play while the terminal is open go here instead of on screen.
   - The Subject's ECG is perfectly regular, like a machine. Its body temperature never changes.
 - **Mechanics:** six slots, and everything takes one. Only an equipped weapon can be aimed. Combining rounds with the pistol loads it. Dropped items can be picked up by the partner. Item boxes in save rooms open a personal stash; boxes are not shared between players, so the pneumatic tube (which also opens the terminal) stays the way to hand things over.
@@ -208,5 +208,5 @@ PS1 / low-poly retro: low-res render (~480×270) upscaled with nearest filtering
   2. Character models and animation (the bodies have to look like the players). ✓ Segmented low-poly figures built in code (`scenes/characters/character_model.gd`), stepped 15 fps animation: idle, walk, aim, recoil, hurt, death, interact, shove, waiting (sitting) and corpse poses. The Subject is a pale, featureless mannequin that never breathes, with a faint light at the nape; the Visitor wears an orange parka, hood and backpack. The body in Chapter 1's ice is now a Subject corpse.
   3. Saving, joint save prompt, death reload, respawn pod, persistent bodies. ✓ (`autoload/save_game.gd`; the lobby's Continue; a new game saves its start, so a death before the first save reloads the chapter start)
   4. Shove, enemy pathfinding, the radio listener, radio power switch. ✓ Shove on F (knockback and a 1 s stagger, enemies or the partner). Enemies hunt along a navigation map baked from each level at start. Husk (`enemy.tscn`): sight (9 m, 140°) and hearing (footsteps 4 m, gunshots 24 m), a wrecked Subject-like figure with red eyes. Listener (`listener.tscn`): blind, tracks any radio that is on within 16 m, through walls; tall, dark, a dish for a face. Both search where they last sensed you. RADIO tab: POWER.
-  5. MAP and FILES tabs; per-role visibility.
+  5. MAP and FILES tabs; per-role visibility. ✓ MAP: rooms (`MapRoom`) of areas whose floor plan (`FloorPlan`) the player has read, with doors, save rooms and your own position; dark with the radio off. FILES: documents read (`Document`, text in `story/documents.json`, optionally different per role). `RoleVisibility` makes anything exist for one role only; `WallText` is red paint (both see it, censored and glitching for the Subject) or cyan code (Subject only); documents can be `censored_for` the Subject (blacked out). Maps and files are per player and saved.
 - **M5** Steam lobbies + in-game radio voice. Radio done ✓; Steam next.

@@ -70,6 +70,10 @@ var equipped := ""
 ## Personal storage, opened from any item box.
 var stash := Inventory.new(ItemBox.STASH_SLOTS)
 var loaded_rounds := 0
+## Documents read (ids, see Documents) and floor plans found (area -> name). Each player
+## keeps their own: what one knows, the other only hears about.
+var files: Array[String] = []
+var maps := {}
 ## The joint save screen (only the local player has one in its overlay).
 var save_prompt := SavePrompt.new()
 var warmth := MAX_WARMTH
@@ -551,6 +555,26 @@ func _unload_into(put: Callable) -> void:
 
 # --- Saving and reloading (see SaveGame) ----------------------------------------------
 
+## A floor plan: its area goes on this player's map, and the map opens on it.
+func learn_map(area: String, area_name: String) -> void:
+	if not maps.has(area):
+		maps[area] = area_name
+		Sound.play_ui("pickup", -6.0, 0.8)
+	open_inventory()
+	inventory_screen.show_tab("map")
+
+
+## A document: kept in FILES, and opened there to read.
+func read_document(doc_id: String) -> void:
+	if not Documents.exists(doc_id):
+		return
+	if doc_id not in files:
+		files.append(doc_id)
+	Sound.play_ui("pickup", -10.0, 1.3)
+	open_inventory()
+	inventory_screen.show_tab("files", doc_id)
+
+
 func open_save_prompt(terminal: SaveTerminal) -> void:
 	if focus or _cutting or _in_cutaway or is_dead or inventory_screen.visible:
 		return
@@ -562,6 +586,7 @@ func save_state() -> Dictionary:
 	return {
 		"inventory": inventory.slots.duplicate(true), "stash": stash.slots.duplicate(true),
 		"equipped": equipped, "loaded_rounds": loaded_rounds, "health": health, "warmth": warmth,
+		"files": files.duplicate(), "maps": maps.duplicate(),
 	}
 
 
@@ -579,6 +604,8 @@ func restore(state: Dictionary, at: Transform3D, mode: String) -> void:
 	loaded_rounds = state.get("loaded_rounds", 0)
 	health = state.get("health", MAX_HEALTH)
 	warmth = state.get("warmth", MAX_WARMTH)
+	files.assign(state.get("files", []))
+	maps = (state.get("maps", {}) as Dictionary).duplicate()
 	_last_health = health
 	is_dead = false
 	_reload_wait = false

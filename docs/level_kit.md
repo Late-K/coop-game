@@ -75,6 +75,14 @@ Interactive pieces live with their systems: doors (`scenes/props/door.tscn`, in 
 - **TemperatureZone**: cold areas. **StoryTrigger** and **ExamineSpot** (Story): lines and narration.
 - **Placements**: anything created or destroyed during play (pickups, enemies). The server re-spawns them for both players.
 
+## Maps, documents and things only one player sees
+- **MapRoom** (`scenes/map/map_room.gd`, under **Story**): one per room and corridor, a rectangle `size` metres across with a short `label` and an `area` id. It draws its outline on the floor in the editor.
+- **FloorPlan** (`scenes/map/floor_plan.tscn`): a plan on a wall, facing into the room. Reading it puts its `area` on that player's MAP (never the partner's). One plan per area; put it near the area's entrance or in its save room.
+- **Document** (`scenes/story/document.tscn`): a paper on a desk or floor with a `doc_id` from `story/documents.json` (`title`, and `text`, or `subject` / `visitor` for a different text per role). Reading opens it in FILES.
+- **RoleVisibility** (`scenes/story/role_visibility.gd`): add as a child of anything to make it exist for one role only (`visible_to`); on the other machine it is hidden and can't be used. Works on documents, floor plans, props, bodies.
+- **WallText** (`scenes/story/wall_text.tscn`): `paint` (red writing: both see it, but `censored_for` the Subject by default, so it glitches for them and only the Visitor can read it) or `code` (the facility's cyan markings: always the Subject's alone, clear to it and not there at all for the Visitor; `visible_to` and `censored_for` only apply to paint), with `message` and `letter_size` in metres. The camera reads **north walls and floors**; east and west walls are edge-on. Floor writing wants letters about 0.45 m tall; code on a wall is a glint from above, readable up close.
+- **Censored documents:** `"censored_for": "subject"` in `story/documents.json` blacks a document out for the Subject (the title stays).
+
 ## Enemies
 - Put enemies under **Placements**: `scenes/enemies/enemy.tscn` (the husk) or `listener.tscn`. Their senses are exports on the root: sight range and angle, hearing, radio range, speed, health, damage.
 - **The navigation map bakes itself** at level start from the grid's floors, CSG and props. Doors count as open: an enemy walks up to a closed door and stops there. Props (crates, shelves) are obstacles.

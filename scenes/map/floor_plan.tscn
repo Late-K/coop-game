@@ -1,0 +1,65 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/map/floor_plan.gd" id="1_plan"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_reach"]
+size = Vector3(1.4, 2, 1.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_board"]
+size = Vector3(0.9, 0.65, 0.03)
+
+[sub_resource type="StandardMaterial3D" id="Material_board"]
+albedo_color = Color(0.16, 0.2, 0.2, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_sheet"]
+size = Vector3(0.8, 0.55, 0.01)
+
+[sub_resource type="StandardMaterial3D" id="Material_sheet"]
+albedo_color = Color(0.1, 0.22, 0.2, 1)
+emission_enabled = true
+emission = Color(0.45, 0.95, 0.82, 1)
+emission_energy_multiplier = 0.35
+
+[sub_resource type="BoxMesh" id="BoxMesh_wall_line"]
+size = Vector3(0.5, 0.015, 0.006)
+
+[sub_resource type="BoxMesh" id="BoxMesh_wall_line_v"]
+size = Vector3(0.015, 0.35, 0.006)
+
+[sub_resource type="StandardMaterial3D" id="Material_lines"]
+shading_mode = 0
+albedo_color = Color(0.6, 1, 0.9, 1)
+
+[node name="FloorPlan" type="Area3D"]
+script = ExtResource("1_plan")
+prompt = "Read floor plan"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0.6)
+shape = SubResource("BoxShape3D_reach")
+
+[node name="Board" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0.015)
+mesh = SubResource("BoxMesh_board")
+surface_material_override/0 = SubResource("Material_board")
+
+[node name="Sheet" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0.035)
+mesh = SubResource("BoxMesh_sheet")
+surface_material_override/0 = SubResource("Material_sheet")
+cast_shadow = 0
+
+[node name="LineA" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.05, 1.62, 0.042)
+mesh = SubResource("BoxMesh_wall_line")
+surface_material_override/0 = SubResource("Material_lines")
+
+[node name="LineB" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1, 1.42, 0.042)
+mesh = SubResource("BoxMesh_wall_line")
+surface_material_override/0 = SubResource("Material_lines")
+
+[node name="LineC" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.18, 1.5, 0.042)
+mesh = SubResource("BoxMesh_wall_line_v")
+surface_material_override/0 = SubResource("Material_lines")

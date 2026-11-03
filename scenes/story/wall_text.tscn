@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/story/wall_text.gd" id="1_text"]
+
+[node name="WallText" type="Label3D"]
+script = ExtResource("1_text")
+message = "THERE WERE ALWAYS TWO"

@@ -8,6 +8,10 @@ extends Interactable
 @onready var wait_point: Marker3D = $WaitPoint
 
 
+func _ready() -> void:
+	add_to_group("save_terminals") # the MAP marks save rooms
+
+
 func interact(player: Player) -> void:
 	player.open_save_prompt(self)
 	used.emit(player)
