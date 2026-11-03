@@ -74,6 +74,9 @@ var loaded_rounds := 0
 ## keeps their own: what one knows, the other only hears about.
 var files: Array[String] = []
 var maps := {}
+## Rooms this player has been in (MapRoom paths from the level): brighter on the MAP.
+var visited := {}
+var _visit_check := 0.0
 ## The joint save screen (only the local player has one in its overlay).
 var save_prompt := SavePrompt.new()
 var warmth := MAX_WARMTH
@@ -172,6 +175,11 @@ func _apply_role() -> void:
 	nameplate.text = Session.ROLE_NAMES[role]
 	# Only your partner's name floats over them; you know who you are.
 	nameplate.visible = not is_multiplayer_authority()
+	# This machine's interface: ZP-SYS for the Subject, the handheld for the Visitor. (Roles
+	# reset to none as a session ends, while the HUD is already being freed.)
+	if is_multiplayer_authority() and role != Session.Role.NONE and is_instance_valid(hud) and hud.is_inside_tree():
+		UiStyle.use(role)
+		hud.apply_style()
 	model.look = CharacterModel.Look.SUBJECT if role == Session.Role.SUBJECT else CharacterModel.Look.VISITOR
 
 
@@ -201,9 +209,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		open_inventory()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_update_footsteps()
 	_update_model()
+	if is_multiplayer_authority():
+		_visit_check -= delta
+		if _visit_check <= 0.0:
+			_visit_check = 0.5
+			_note_visited_room()
 	# Runs on every peer so the partner sees your laser too.
 	laser.visible = is_aiming
 	if is_aiming:
@@ -352,7 +365,8 @@ func _find_interactable() -> Interactable:
 	var nearest: Interactable = null
 	var nearest_distance := INF
 	for area in interaction_area.get_overlapping_areas():
-		if area is Interactable:
+		# Something with nothing to offer right now (an open door) isn't a target.
+		if area is Interactable and area.get_prompt(self) != "":
 			var point: Vector3 = area.interaction_point()
 			var distance := Vector2(global_position.x, global_position.z).distance_squared_to(Vector2(point.x, point.z))
 			if distance < nearest_distance:
@@ -555,6 +569,21 @@ func _unload_into(put: Callable) -> void:
 
 # --- Saving and reloading (see SaveGame) ----------------------------------------------
 
+## Marks the MapRoom this player stands in as visited.
+func _note_visited_room() -> void:
+	var level := get_tree().get_first_node_in_group("level") as Level
+	if level == null:
+		return
+	for room: MapRoom in get_tree().get_nodes_in_group("map_rooms"):
+		if room.contains(global_position):
+			visited[String(level.get_path_to(room))] = true
+
+
+func visited_room(room: MapRoom) -> bool:
+	var level := get_tree().get_first_node_in_group("level") as Level
+	return level != null and visited.has(String(level.get_path_to(room)))
+
+
 ## A floor plan: its area goes on this player's map, and the map opens on it.
 func learn_map(area: String, area_name: String) -> void:
 	if not maps.has(area):
@@ -576,9 +605,16 @@ func read_document(doc_id: String) -> void:
 
 
 func open_save_prompt(terminal: SaveTerminal) -> void:
-	if focus or _cutting or _in_cutaway or is_dead or inventory_screen.visible:
+	if (focus and focus != terminal) or _cutting or _in_cutaway or is_dead or inventory_screen.visible:
 		return
 	save_prompt.open(self, terminal)
+
+
+## Out of first person at `target` (the save screen closing), unless something else (a death,
+## a reload) is already taking over the view.
+func leave_focus(target: Interactable) -> void:
+	if focus == target and not is_dead and not _reload_wait:
+		_exit_focus()
 
 
 ## What a save keeps of this player (sent when confirming at a terminal).
@@ -586,7 +622,7 @@ func save_state() -> Dictionary:
 	return {
 		"inventory": inventory.slots.duplicate(true), "stash": stash.slots.duplicate(true),
 		"equipped": equipped, "loaded_rounds": loaded_rounds, "health": health, "warmth": warmth,
-		"files": files.duplicate(), "maps": maps.duplicate(),
+		"files": files.duplicate(), "maps": maps.duplicate(), "visited": visited.keys(),
 	}
 
 
@@ -606,12 +642,15 @@ func restore(state: Dictionary, at: Transform3D, mode: String) -> void:
 	warmth = state.get("warmth", MAX_WARMTH)
 	files.assign(state.get("files", []))
 	maps = (state.get("maps", {}) as Dictionary).duplicate()
+	visited.clear()
+	for path in state.get("visited", []):
+		visited[path] = true
 	_last_health = health
 	is_dead = false
 	_reload_wait = false
 	if inventory_screen.visible:
 		close_inventory()
-	save_prompt.close()
+	save_prompt.close(false)
 	if focus:
 		focus.has_local_focus = false
 		focus = null
@@ -651,7 +690,7 @@ func wait_for_reload() -> void:
 	_reload_wait = true
 	if inventory_screen.visible:
 		close_inventory()
-	save_prompt.close()
+	save_prompt.close(false)
 	create_tween().tween_property(fade, "color:a", 1.0, 1.0)
 
 
@@ -854,7 +893,7 @@ func _die() -> void:
 	Sound.play_ui("death")
 	if inventory_screen.visible:
 		inventory_screen.close()
-	save_prompt.close()
+	save_prompt.close(false)
 	MetaSave.record("deaths")
 	if focus:
 		focus.has_local_focus = false
@@ -907,11 +946,12 @@ func _recovery_point() -> Vector3:
 # --- Cold --------------------------------------------------------------------
 
 ## Applies the look, sound and radio interference of the EnvironmentZone we stand in
-## (e.g. the whiteout).
+## (e.g. the whiteout). A save room's calm ambience wins over any zone's.
 func _update_environment() -> void:
 	var environment: Environment = null
 	var level := get_tree().get_first_node_in_group("level") as Level
 	var ambience := level.ambience if level else ""
+	var haven_ambience := ""
 	var interference := 0.0
 	for area in zone_probe.get_overlapping_areas():
 		if area is EnvironmentZone:
@@ -920,6 +960,10 @@ func _update_environment() -> void:
 			if area.ambience:
 				ambience = area.ambience
 			interference = maxf(interference, area.radio_interference)
+		elif area is SafeRoom and area.ambience:
+			haven_ambience = area.ambience
+	if haven_ambience:
+		ambience = haven_ambience
 	Radio.local_interference = interference
 	if third_person_camera.environment != environment:
 		third_person_camera.environment = environment
@@ -968,9 +1012,14 @@ func _update_warmth(delta: float) -> void:
 	if not feels_cold or is_dead:
 		return
 	var rate := 0.0
+	var haven_rate := -INF
 	for area in zone_probe.get_overlapping_areas():
 		if area is TemperatureZone:
 			rate += area.warmth_rate
+		elif area is SafeRoom:
+			haven_rate = maxf(haven_rate, area.warmth_rate)
+	# A save room is always warm, however cold the area around it.
+	rate = maxf(rate, haven_rate)
 	var shown_before := snappedf(body_temperature(), 0.1)
 	warmth = clampf(warmth + rate * delta, 0.0, MAX_WARMTH)
 	if warmth < MAX_WARMTH * 0.4 and not _warned_cold:

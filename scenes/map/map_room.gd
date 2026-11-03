@@ -13,6 +13,8 @@ extends Node3D
 @export var label := ""
 ## Which floor plan reveals it (FloorPlan.area).
 @export var area := ""
+## Which storey it is on (0 = ground; the grid's floor index). The MAP shows one at a time.
+@export var floor := 0
 
 var _outline: MeshInstance3D
 
@@ -20,6 +22,11 @@ var _outline: MeshInstance3D
 func _ready() -> void:
 	add_to_group("map_rooms")
 	_update_outline()
+
+
+## True when `world` is inside this room (on its floor).
+func contains(world: Vector3) -> bool:
+	return floori((world.y + 0.5) / Kit.CELL.y) == floor and rect().has_point(Vector2(world.x, world.z))
 
 
 ## The room's rectangle on the ground plane (X, Z).

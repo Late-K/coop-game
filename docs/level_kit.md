@@ -57,7 +57,7 @@ Drag into **Props**; place at floor level (y = 0). All face +Z (south, toward th
 | vent | 1 m grille | Back against a wall face |
 | debris | small | Walk-through decoration |
 
-Interactive pieces live with their systems: doors (`scenes/props/door.tscn`, in **Doors**, centred in the wall cell at y = 1.25; it spans Z, so turn it 90° in north/south walls), save terminal, item box, heater, item tube, keypads, monitors.
+Interactive pieces live with their systems: doors (`scenes/props/door.tscn`, in **Doors**, centred in the wall cell at y = 1.25; it spans Z, so turn it 90° in north/south walls; set `lock` to KEY with a `key_item`, BARRED with the `barred_side` it opens from, or POWER for a puzzle to call `set_powered`, and `manual` for a plain door players open by hand; locked doors show on the MAP), save terminal, item box, heater, item tube, keypads, monitors.
 
 ## Light
 - **ceiling_light** (omni) and **wall_lamp** (spot aimed down and south). Both show a glowing fixture in the light's colour. To change colour, energy or range: right-click the instance → *Editable Children*, then select its Light. `flicker` makes a failing lamp.
@@ -72,11 +72,11 @@ Interactive pieces live with their systems: doors (`scenes/props/door.tscn`, in 
 
 ## Zones and story
 - **EnvironmentZone** (Zones): look, ambience, footsteps and radio interference per area (the sample's Yard).
-- **TemperatureZone**: cold areas. **StoryTrigger** and **ExamineSpot** (Story): lines and narration.
+- **TemperatureZone**: cold areas. **SafeRoom**: a save room's haven (see Saving and dying). **StoryTrigger** and **ExamineSpot** (Story): lines and narration.
 - **Placements**: anything created or destroyed during play (pickups, enemies). The server re-spawns them for both players.
 
 ## Maps, documents and things only one player sees
-- **MapRoom** (`scenes/map/map_room.gd`, under **Story**): one per room and corridor, a rectangle `size` metres across with a short `label` and an `area` id. It draws its outline on the floor in the editor.
+- **MapRoom** (`scenes/map/map_room.gd`, under **Story**): one per room and corridor, a rectangle `size` metres across with a short `label`, an `area` id and its `floor` (0 = ground; the MAP shows one floor at a time, Up/Down to change). Rooms a player has been in are drawn brighter. It draws its outline on the floor in the editor.
 - **FloorPlan** (`scenes/map/floor_plan.tscn`): a plan on a wall, facing into the room. Reading it puts its `area` on that player's MAP (never the partner's). One plan per area; put it near the area's entrance or in its save room.
 - **Document** (`scenes/story/document.tscn`): a paper on a desk or floor with a `doc_id` from `story/documents.json` (`title`, and `text`, or `subject` / `visitor` for a different text per role). Reading opens it in FILES.
 - **RoleVisibility** (`scenes/story/role_visibility.gd`): add as a child of anything to make it exist for one role only (`visible_to`); on the other machine it is hidden and can't be used. Works on documents, floor plans, props, bodies.
@@ -86,10 +86,11 @@ Interactive pieces live with their systems: doors (`scenes/props/door.tscn`, in 
 ## Enemies
 - Put enemies under **Placements**: `scenes/enemies/enemy.tscn` (the husk) or `listener.tscn`. Their senses are exports on the root: sight range and angle, hearing, radio range, speed, health, damage.
 - **The navigation map bakes itself** at level start from the grid's floors, CSG and props. Doors count as open: an enemy walks up to a closed door and stops there. Props (crates, shelves) are obstacles.
-- Players make noise: footsteps carry 4 m, gunshots 24 m. A husk that hears one comes to look; a listener tracks any radio that's on within 16 m, so place listeners where switching the radio off (losing the partner and the map) is the price of getting past.
+- Players make noise: footsteps carry 4 m, gunshots 24 m. A husk that hears one comes to look, and after searching (or losing someone) walks back to where it was placed, its post; a listener tracks any radio that's on within 16 m, so place listeners where switching the radio off (losing the partner and the map) is the price of getting past.
 
 ## Saving and dying
 - **Save rooms come in pairs**, one on each player's side, and sparse. Each needs `scenes/props/save_terminal.tscn` (terminal plus respawn pod): give it **1.2 m clear to its right** for the pod and about **1.5 m in front**, back against a wall. An item box nearby.
+- **Save rooms are safe havens:** put `scenes/zones/safe_room.tscn` in **Zones** over every save room (*Editable Children*, size its box to the room's floor, not the doorway). Inside one, enemies never walk in (they stop in the doorway), give up on anyone who reaches it and wander back to their post, ignore noises made inside, and listeners can't hear a radio there; the Visitor warms up (`warmth_rate`, beating any cold zone), and it plays `amb_safe`. Light it warm (a warm key lamp), and keep out puzzles, tube stations and scares. The sample's lab is one.
 - **Anything with state that a reload must put back** joins the `saved` group and has `save_state() -> Variant`, `load_state(state)` (applied on both machines, instantly: the screen is black) and an exported `keep_on_reload`. Doors, the heater, code puzzles, the beacon network and story triggers already do. Set `keep_on_reload` per puzzle: on means a death does not undo it (a learned code), off means it resets (power, valves, lamps).
 - Pickups and enemies under **Placements** reset automatically.
 - **EnvironmentZone `lethal = false`** marks places where nothing can kill yet (Chapter 1's whiteout): dying there is a collapse, waking by the nearest lit beacon lamp (or the role's start), with no reload.

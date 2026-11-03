@@ -25,14 +25,14 @@ func _init() -> void:
 	right.size_flags_horizontal = SIZE_EXPAND_FILL
 	right.add_theme_constant_override("separation", 10)
 	add_child(right)
-	_title = InventoryScreen._label("", 18, InventoryScreen.PHOSPHOR)
+	_title = InventoryScreen._label("", 18, UiStyle.accent)
 	right.add_child(_title)
 	right.add_child(InventoryScreen._rule())
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	right.add_child(scroll)
-	_text = InventoryScreen._label("", 15, InventoryScreen.PHOSPHOR.darkened(0.1))
+	_text = InventoryScreen._label("", 15, UiStyle.accent.darkened(0.1))
 	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_text.size_flags_horizontal = SIZE_EXPAND_FILL
 	scroll.add_child(_text)
@@ -44,12 +44,15 @@ func open(doc_id := "") -> void:
 		child.queue_free()
 	_buttons.clear()
 	if player.files.is_empty():
-		_list.add_child(InventoryScreen._label("NO FILES.", 14, InventoryScreen.DIM.lightened(0.3)))
+		_list.add_child(InventoryScreen._label("NO FILES.", 14, UiStyle.dim.lightened(0.3)))
 		_title.text = ""
 		_text.text = "Documents you read are kept here."
 		return
-	for id: String in player.files:
-		var button := InventoryScreen._button(Documents.title(id), 13)
+	for i in player.files.size():
+		var id := player.files[i]
+		# The handheld numbers its notes.
+		var title := "%02d  %s" % [i + 1, Documents.title(id)] if UiStyle.visitor() else Documents.title(id)
+		var button := InventoryScreen._button(title, 13)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		button.focus_entered.connect(_show.bind(id))

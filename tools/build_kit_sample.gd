@@ -87,15 +87,35 @@ func _paint() -> void:
 func _furnish() -> void:
 	# Doors sit in the middle of the wall cell; door.tscn spans Z, so east/west walls need
 	# no rotation (north/south walls: turn it 90 degrees).
-	for at in [Vector3(11.5, 1.25, 4.5), Vector3(20.5, 1.25, 4.5)]:
-		var door := _place("res://scenes/props/door.tscn", "Doors", at)
-		door.start_open = true
+	# The lab door is locked (its key is on a lab desk); the storage door is barred, and opens
+	# only from the corridor side.
+	var lab_door := _place("res://scenes/props/door.tscn", "Doors", Vector3(11.5, 1.25, 4.5))
+	lab_door.lock = Door.Lock.KEY
+	lab_door.key_item = "service_key"
+	var storage_door := _place("res://scenes/props/door.tscn", "Doors", Vector3(20.5, 1.25, 4.5))
+	storage_door.lock = Door.Lock.BARRED
+	storage_door.barred_side = "minus_x"
+	var key := _place("res://scenes/items/pickup.tscn", "Placements", Vector3(6, 0.85, 1.5))
+	key.item_id = "service_key"
 
 	# Lab: desks along the north wall, lockers on the south wall, one lamp.
 	for x in [3, 6, 9]:
 		_place(PROPS + "desk.tscn", "Props", Vector3(x, 0, 1.45))
 	_place(PROPS + "lockers.tscn", "Props", Vector3(8, 0, 8.75), FACE_NORTH)
-	_place(PROPS + "ceiling_light.tscn", "Lights", Vector3(6, 0, 4))
+	var lab_lamp := _place(PROPS + "ceiling_light.tscn", "Lights", Vector3(6, 0, 4))
+	# The lab is the save room: a terminal and pod on the west wall (the pod opens to its
+	# north), an item box, a warm lamp, and a SafeRoom over the floor: a haven no enemy enters.
+	_place("res://scenes/props/save_terminal.tscn", "Props", Vector3(1, 0, 4.2), FACE_EAST)
+	_place("res://scenes/props/item_box.tscn", "Props", Vector3(4.5, 0, 1.05))
+	var lab_light: KitLight = lab_lamp.get_node("Light")
+	lab_light.light_color = Color(1.0, 0.82, 0.6)
+	level.set_editable_instance(lab_lamp, true)
+	var haven := _place("res://scenes/zones/safe_room.tscn", "Zones", Vector3(6, 0, 5))
+	haven.name = "LabSafeRoom"
+	var haven_box := BoxShape3D.new()
+	haven_box.size = Vector3(10, 3, 8)
+	haven.get_node("CollisionShape3D").shape = haven_box
+	level.set_editable_instance(haven, true)
 
 	# Corridor: pipes along the north wall and a failing lamp.
 	for x in [13, 15, 17, 19]:

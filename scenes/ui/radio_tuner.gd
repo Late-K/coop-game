@@ -40,16 +40,16 @@ func _init() -> void:
 	status.custom_minimum_size = Vector2(250, 0)
 	status.add_theme_constant_override("separation", 8)
 	add_child(status)
-	status.add_child(InventoryScreen._label("RADIO", 22, InventoryScreen.PHOSPHOR))
+	status.add_child(InventoryScreen._label("RADIO", 22, UiStyle.accent))
 	_power = InventoryScreen._button("POWER: ON", 14)
 	_power.pressed.connect(func() -> void: Radio.set_powered(not Radio.powered))
 	status.add_child(_power)
-	_frequency_label = InventoryScreen._label("", 34, InventoryScreen.PHOSPHOR)
+	_frequency_label = InventoryScreen._label("", 34, UiStyle.accent)
 	status.add_child(_frequency_label)
-	_channel_label = InventoryScreen._label("", 14, InventoryScreen.PHOSPHOR)
+	_channel_label = InventoryScreen._label("", 14, UiStyle.accent)
 	_channel_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status.add_child(_channel_label)
-	_meter_label = InventoryScreen._label("", 14, InventoryScreen.PHOSPHOR)
+	_meter_label = InventoryScreen._label("", 14, UiStyle.accent)
 	status.add_child(_meter_label)
 	status.add_child(InventoryScreen._spacer_v())
 	_home = InventoryScreen._button("PARTNER CHANNEL %.1f" % Radio.HOME_FREQUENCY, 14)
@@ -71,19 +71,19 @@ func _init() -> void:
 	_scope.custom_minimum_size = Vector2(0, 80)
 	_scope.draw.connect(_draw_scope)
 	main.add_child(_scope)
-	_transcript = InventoryScreen._label("", 15, InventoryScreen.PHOSPHOR)
+	_transcript = InventoryScreen._label("", 15, UiStyle.accent)
 	_transcript.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_transcript.custom_minimum_size = Vector2(0, 70)
 	main.add_child(_transcript)
-	main.add_child(InventoryScreen._label("MESSAGES", 12, InventoryScreen.DIM.lightened(0.3)))
+	main.add_child(InventoryScreen._label("MESSAGES", 12, UiStyle.dim.lightened(0.3)))
 	main.add_child(_messages)
 
-	var field := InventoryScreen._style(InventoryScreen.SCREEN, InventoryScreen.DIM, 1, 2, 6)
-	var focused := InventoryScreen._style(InventoryScreen.SCREEN, PlayerHud.RADIO_COLOR, 1, 2, 6)
+	var field := InventoryScreen._style(UiStyle.screen, UiStyle.dim, 1, 2, 6)
+	var focused := InventoryScreen._style(UiStyle.screen, PlayerHud.RADIO_COLOR, 1, 2, 6)
 	_chat_input.add_theme_stylebox_override("normal", field)
 	_chat_input.add_theme_stylebox_override("focus", focused)
 	_chat_input.add_theme_color_override("font_color", PlayerHud.RADIO_COLOR)
-	_chat_input.add_theme_color_override("font_placeholder_color", InventoryScreen.DIM.lightened(0.2))
+	_chat_input.add_theme_color_override("font_placeholder_color", UiStyle.dim.lightened(0.2))
 	_chat_input.add_theme_font_size_override("font_size", 13)
 	_chat_input.placeholder_text = "WRITE A MESSAGE ON THIS FREQUENCY..."
 	_chat_input.max_length = Radio.CHAT_MAX
@@ -145,7 +145,7 @@ func _process(delta: float) -> void:
 	_frequency_label.text = "%.1f MHz" % Radio.frequency
 	_channel_label.text = "PARTNER CHANNEL" if home \
 			else "OFF CHANNEL\nYour partner can't hear you here unless they tune in too."
-	_channel_label.modulate = InventoryScreen.PHOSPHOR if home else PlayerHud.RADIO_COLOR
+	_channel_label.modulate = UiStyle.accent if home else PlayerHud.RADIO_COLOR
 	var strength := Radio.station_strength
 	var bars := clampi(roundi(strength * 8.0), 0, 8)
 	_meter_label.text = "SIGNAL [%s%s]" % ["|".repeat(bars), ".".repeat(8 - bars)]
@@ -228,12 +228,15 @@ func _update_messages() -> void:
 func _draw_dial() -> void:
 	var area := dial.size
 	var font := dial.get_theme_font("font", "Label")
-	var phosphor := InventoryScreen.PHOSPHOR
-	var dim := InventoryScreen.DIM
-	dial.draw_rect(Rect2(Vector2.ZERO, area), Color(0.02, 0.05, 0.05))
+	var phosphor := UiStyle.accent
+	var dim := UiStyle.dim
+	dial.draw_rect(Rect2(Vector2.ZERO, area), UiStyle.panel)
 	if not Radio.powered:
 		if dial.has_focus():
 			dial.draw_rect(Rect2(Vector2.ZERO, area), dim.lightened(0.2), false, 1.0)
+		return
+	if UiStyle.visitor():
+		_draw_band(area, font)
 		return
 	var center := area.x / 2.0
 	var per_mhz := area.x / (SCALE_SPAN * 2.0)
@@ -264,9 +267,12 @@ func _draw_dial() -> void:
 ## channel the line is flat, and moves while the partner talks.
 func _draw_scope() -> void:
 	var area := _scope.size
-	_scope.draw_rect(Rect2(Vector2.ZERO, area), Color(0.02, 0.05, 0.05))
-	_scope.draw_line(Vector2(0, area.y / 2.0), Vector2(area.x, area.y / 2.0), InventoryScreen.DIM, 1.0)
+	_scope.draw_rect(Rect2(Vector2.ZERO, area), UiStyle.panel)
+	_scope.draw_line(Vector2(0, area.y / 2.0), Vector2(area.x, area.y / 2.0), UiStyle.dim, 1.0)
 	if not Radio.powered:
+		return
+	if UiStyle.visitor():
+		_draw_meter(area)
 		return
 	var strength := Radio.station_strength
 	var shape := Radio.station.shape if Radio.station else ""
@@ -287,4 +293,54 @@ func _draw_scope() -> void:
 				wave = sin(t * 47.0 + _time * 6.0) * sin(t * 9.0 + _time * 2.3) * (0.5 + 0.5 * sin(_time * 4.1))
 		var y := wave * strength + _rng.randf_range(-1.0, 1.0) * noise + _rng.randf_range(-0.03, 0.03)
 		points.append(Vector2(x, area.y / 2.0 - clampf(y, -1.0, 1.0) * area.y * 0.42))
-	_scope.draw_polyline(points, InventoryScreen.PHOSPHOR, 1.5)
+	_scope.draw_polyline(points, UiStyle.accent, 1.5)
+
+
+## The handheld's tuner: the whole band as one row of LCD segments, lit up to where it is
+## tuned, a pointer under it, the partner channel marked. No scrolling scale.
+func _draw_band(area: Vector2, font: Font) -> void:
+	var accent := UiStyle.accent
+	var segments := 80
+	var width := (area.x - 24.0) / segments
+	var at := (Radio.frequency - Radio.MIN_FREQUENCY) / (Radio.MAX_FREQUENCY - Radio.MIN_FREQUENCY)
+	for i in segments:
+		var lit := float(i) / segments <= at
+		var rect := Rect2(12 + i * width + 1, 14, width - 2, 22)
+		dial.draw_rect(rect, accent if lit else UiStyle.dim.darkened(0.4))
+	var pointer := 12 + at * (area.x - 24.0)
+	dial.draw_colored_polygon(PackedVector2Array([Vector2(pointer, 40), Vector2(pointer - 6, 50), Vector2(pointer + 6, 50)]), accent)
+	var home := 12 + (Radio.HOME_FREQUENCY - Radio.MIN_FREQUENCY) / (Radio.MAX_FREQUENCY - Radio.MIN_FREQUENCY) * (area.x - 24.0)
+	dial.draw_string(font, Vector2(home - 12, 66), "CH", HORIZONTAL_ALIGNMENT_CENTER, 24, 12, PlayerHud.RADIO_COLOR)
+	for mhz in [100, 120, 140, 160, 180]:
+		var x := 12 + float(mhz - Radio.MIN_FREQUENCY) / (Radio.MAX_FREQUENCY - Radio.MIN_FREQUENCY) * (area.x - 24.0)
+		dial.draw_string(font, Vector2(x - 16, 10), str(mhz), HORIZONTAL_ALIGNMENT_CENTER, 32, 10, UiStyle.dim.lightened(0.5))
+	if dial.has_focus():
+		dial.draw_rect(Rect2(Vector2.ZERO, area), UiStyle.dim, false, 1.0)
+
+
+## The handheld's signal meter: a bar graph, each bar stepped into segments. A station rises
+## out of the hiss in a shape of its own; on the partner channel it's still until they talk.
+func _draw_meter(area: Vector2) -> void:
+	var bars := 32
+	var width := area.x / bars
+	var strength := Radio.station_strength
+	var shape := Radio.station.shape if Radio.station else ""
+	var noise := 0.0 if Radio.on_home_channel() else (1.0 - strength) * 0.8
+	if Radio.on_home_channel() and Radio.receiving:
+		shape = "voice"
+		strength = 0.8
+	for i in bars:
+		var t := float(i) / bars
+		var wave := 0.0
+		match shape:
+			"tone":
+				wave = 0.6 + 0.3 * sin(t * 12.0 + _time * 6.0)
+			"pulse":
+				wave = 0.9 if fmod(_time * 2.5 + t * 3.0, 1.0) < 0.45 else 0.1
+			"voice":
+				wave = 0.5 + 0.5 * absf(sin(t * 9.0 + _time * 5.0) * sin(_time * 3.7 + t * 4.0))
+		var level := clampf(wave * strength + _rng.randf() * noise + 0.04, 0.0, 1.0)
+		var steps := ceili(level * 10.0)
+		for s in steps:
+			var h := area.y / 10.0
+			_scope.draw_rect(Rect2(i * width + 2, area.y - (s + 1) * h + 1, width - 4, h - 2), UiStyle.accent)

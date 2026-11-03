@@ -20,6 +20,10 @@ const DEFS := {
 		"combine": {"medkit": "merge"},
 		"description": "Gauze, coagulant, a single-use injector. The label lists a dosage for 'organic personnel'.",
 	},
+	"service_key": {
+		"name": "Service key", "kind": "key", "max_stack": 1, "color": Color(0.75, 0.62, 0.3),
+		"description": "A heavy key on a tag stamped MAINT-2. The teeth are worn smooth; someone used it every day, then stopped.",
+	},
 	"heat_cell": {
 		"name": "Heat cell", "kind": "key", "max_stack": 1, "color": Color(1.0, 0.45, 0.1),
 		"description": "A sealed thermal cell, still warm. Fits facility heaters.",

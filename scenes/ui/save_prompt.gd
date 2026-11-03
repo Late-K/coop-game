@@ -1,10 +1,40 @@
 class_name SavePrompt
 extends Control
-## The joint save screen at a save terminal, in the ZP-SYS terminal's style. Saving needs
-## both players at a terminal: each confirms here, and the game saves when both have (see
-## SaveGame). Tab or Esc leaves; the character stands still while it is open.
+## The save terminal's own screen. Using a terminal cuts to first person at it, and then its
+## screen becomes the whole screen: a green CRT that powers on, curved, scanlined and
+## glowing, the same for both players (it is the facility's machine, not theirs).
+## Saving needs both players, each at a terminal: each confirms here, and the game saves
+## when both have (see SaveGame). Tab or Esc leaves, back out of first person.
 
-const SAVED_TIME := 1.6
+const GREEN := Color(0.4, 1.0, 0.55)
+const DARK := Color(0.01, 0.035, 0.015)
+const SAVED_TIME := 1.8
+const POWER_TIME := 0.35
+## Curvature, scanlines, glow, vignette and the power-on line, over everything below it.
+const CRT := """
+shader_type canvas_item;
+uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;
+uniform float power = 1.0;
+uniform vec3 flash = vec3(0.7, 1.0, 0.75);
+void fragment() {
+	vec2 c = SCREEN_UV - 0.5;
+	c *= 1.0 + 0.32 * dot(c, c);
+	vec2 uv = c + 0.5;
+	if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+		COLOR = vec4(0.0, 0.0, 0.0, 1.0);
+	} else {
+		vec3 col = texture(screen_tex, uv).rgb;
+		vec3 glow = textureLod(screen_tex, uv, 2.5).rgb;
+		col += glow * 0.55;
+		col *= 0.78 + 0.22 * sin(FRAGCOORD.y * 2.1);
+		col *= 1.0 - dot(c, c) * 1.6;
+		col *= 0.97 + 0.03 * sin(TIME * 57.0);
+		float band = step(abs(uv.y - 0.5), max(power, 0.004) * 0.5);
+		col = col * band + flash * band * (1.0 - power) * 0.8;
+		COLOR = vec4(col, 1.0);
+	}
+}
+"""
 
 var player: Player
 var terminal: SaveTerminal
@@ -13,6 +43,7 @@ var _you := Label.new()
 var _partner := Label.new()
 var _message := Label.new()
 var _hint := Label.new()
+var _crt := ShaderMaterial.new()
 var _done := false
 
 
@@ -23,40 +54,39 @@ func _init() -> void:
 func _ready() -> void:
 	set_anchors_and_offsets_preset(PRESET_FULL_RECT) # created in code: give it the screen's size
 	mouse_filter = MOUSE_FILTER_STOP
-	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.7)
-	dim.set_anchors_preset(PRESET_FULL_RECT)
-	add_child(dim)
-	var frame := PanelContainer.new()
-	frame.add_theme_stylebox_override("panel", InventoryScreen._style(InventoryScreen.SCREEN,
-			InventoryScreen.PHOSPHOR, 3, 22, 26))
-	frame.anchor_left = 0.5
-	frame.anchor_right = 0.5
-	frame.anchor_top = 0.5
-	frame.anchor_bottom = 0.5
-	frame.offset_left = -300
-	frame.offset_right = 300
-	frame.offset_top = -150
-	frame.offset_bottom = 150
-	add_child(frame)
+	var back := ColorRect.new()
+	back.color = DARK
+	back.set_anchors_preset(PRESET_FULL_RECT)
+	add_child(back)
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(PRESET_FULL_RECT)
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 120 if side in ["left", "right"] else 90)
+	add_child(margin)
 	var page := VBoxContainer.new()
-	page.add_theme_constant_override("separation", 10)
-	frame.add_child(page)
-	page.add_child(InventoryScreen._label("ZP-SYS // OCCUPANCY RECORD", 16, InventoryScreen.PHOSPHOR))
-	page.add_child(InventoryScreen._rule())
-	page.add_child(InventoryScreen._label("RECORD PROGRESS?", 22, InventoryScreen.PHOSPHOR))
-	var note := InventoryScreen._label("Both occupants must confirm, each at a terminal.", 14,
-			InventoryScreen.PHOSPHOR.darkened(0.2))
-	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	page.add_child(note)
+	page.add_theme_constant_override("separation", 18)
+	margin.add_child(page)
+	page.add_child(_line("ZP-SYS // OCCUPANCY RECORD", 22))
+	page.add_child(_line("-".repeat(64), 18))
+	page.add_child(_line("RECORD PROGRESS?", 40))
+	page.add_child(_line("Both occupants must confirm, each at a terminal.", 20))
 	for label in [_you, _partner, _message]:
-		label.add_theme_font_size_override("font_size", 16)
+		label.add_theme_font_size_override("font_size", 26)
+		label.modulate = GREEN
 		page.add_child(label)
-	page.add_child(InventoryScreen._spacer_v())
-	page.add_child(InventoryScreen._rule())
-	_hint.add_theme_font_size_override("font_size", 12)
-	_hint.modulate = InventoryScreen.DIM.lightened(0.3)
+	var spacer := Control.new()
+	spacer.size_flags_vertical = SIZE_EXPAND_FILL
+	page.add_child(spacer)
+	_hint.add_theme_font_size_override("font_size", 18)
+	_hint.modulate = GREEN.darkened(0.35)
 	page.add_child(_hint)
+	var glass := ColorRect.new()
+	glass.set_anchors_preset(PRESET_FULL_RECT)
+	glass.mouse_filter = MOUSE_FILTER_IGNORE
+	_crt.shader = Shader.new()
+	_crt.shader.code = CRT
+	glass.material = _crt
+	add_child(glass)
 	SaveGame.statuses_changed.connect(refresh)
 	SaveGame.saved.connect(_on_saved)
 
@@ -69,10 +99,16 @@ func open(owner_player: Player, at: SaveTerminal) -> void:
 	Story.suppressed = true
 	SaveGame.set_status(SaveGame.Status.AT_TERMINAL, terminal)
 	Sound.play_ui("keypad_press", -4.0, 0.8)
+	Sound.play_ui("radio_unkey", -14.0, 0.6) # the tube warming up
+	_crt.set_shader_parameter("power", 0.0)
+	create_tween().tween_method(func(v: float) -> void: _crt.set_shader_parameter("power", v), 0.0, 1.0, POWER_TIME) \
+			.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 	refresh()
 
 
-func close() -> void:
+## Leaves the screen; unless `leave_focus` is false (a death or reload is taking over),
+## the player steps back out of first person too.
+func close(leave_focus := true) -> void:
 	if not visible:
 		return
 	visible = false
@@ -80,6 +116,8 @@ func close() -> void:
 	if not _done:
 		SaveGame.set_status(SaveGame.Status.AWAY)
 	Sound.play_ui("keypad_press", -6.0, 0.6)
+	if leave_focus and player:
+		player.leave_focus(terminal)
 
 
 func _input(event: InputEvent) -> void:
@@ -100,13 +138,11 @@ func refresh() -> void:
 		return
 	var ready := SaveGame.status_of(multiplayer.get_unique_id()) == SaveGame.Status.READY
 	_you.text = "YOU ........ %s" % ("READY" if ready else "AT TERMINAL")
-	_you.modulate = InventoryScreen.PHOSPHOR
 	var partner: SaveGame.Status = SaveGame.partner_status()
 	_partner.text = "PARTNER .... %s" % ["NOT AT A TERMINAL", "AT A TERMINAL", "READY"][partner]
-	_partner.modulate = InventoryScreen.PHOSPHOR if partner != SaveGame.Status.AWAY else PlayerHud.RADIO_COLOR
-	_message.text = "WAITING FOR PARTNER." if ready else ""
-	_message.modulate = InventoryScreen.PHOSPHOR.darkened(0.2)
-	_hint.text = "[Tab] leave" if ready else "[E] confirm   [Tab] leave"
+	_partner.modulate = GREEN if partner != SaveGame.Status.AWAY else GREEN.darkened(0.45)
+	_message.text = "WAITING FOR PARTNER_" if ready else ""
+	_hint.text = "[TAB] LEAVE" if ready else "[E] CONFIRM     [TAB] LEAVE"
 
 
 func _on_saved() -> void:
@@ -116,7 +152,14 @@ func _on_saved() -> void:
 	_you.text = ""
 	_partner.text = ""
 	_message.text = MetaSave.format("PROGRESS RECORDED. OCCUPANT {iteration}.")
-	_message.modulate = InventoryScreen.PHOSPHOR
 	_hint.text = ""
 	Sound.play_ui("code_right", -6.0)
 	get_tree().create_timer(SAVED_TIME).timeout.connect(close)
+
+
+func _line(text: String, font_size: int) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", font_size)
+	label.modulate = GREEN
+	return label

@@ -1,6 +1,7 @@
 class_name SaveTerminal
 extends Interactable
-## Save terminal with its respawn pod. Using it opens the joint save prompt (SavePrompt):
+## Save terminal with its respawn pod. Using it cuts to first person at its screen, and then
+## the screen becomes the whole screen: the joint save prompt (SavePrompt):
 ## saving needs both players, each at a terminal. Whoever saved here comes back here: out of
 ## the pod after dying, or sitting by the terminal when their partner died.
 
@@ -13,8 +14,11 @@ func _ready() -> void:
 
 
 func interact(player: Player) -> void:
-	player.open_save_prompt(self)
 	used.emit(player)
+	# A moment looking at the terminal before its screen fills yours.
+	await get_tree().create_timer(0.3).timeout
+	if player.focus == self:
+		player.open_save_prompt(self)
 
 
 ## Where a player comes back: in front of the pod, or (waiting) by the terminal. The pod's

@@ -11,6 +11,9 @@ extends CharacterBody3D
 ## Shot down, it collapses and gets back up after a while, unless a player walks over and
 ## finishes it (interact while it is down). A shove staggers it for a moment.
 ##
+## Save rooms are havens (SafeRoom): it never walks into one, ignores noises made inside,
+## and gives up on anyone who reaches one, wandering back to where it started.
+##
 ## enemy.tscn is the husk (sight and hearing); listener.tscn is blind and tracks radios.
 
 enum State { IDLE, INVESTIGATE, CHASE, STAGGERED, DOWNED }
@@ -28,6 +31,8 @@ const LOSE_TIME := 4.0
 const SEARCH_TIME := 3.0
 const STAGGER_TIME := 1.0
 const SENSE_INTERVAL := 0.25
+## How far short of a save room's edge it stops (about its body's reach).
+const HAVEN_MARGIN := 0.6
 
 @export var look := CharacterModel.Look.HUSK
 @export var max_health := 30
@@ -63,6 +68,10 @@ var _timer := 0.0
 var _lost_time := 0.0
 var _sense_timer := 0.0
 var _knockback := Vector3.ZERO
+## Where it started (its post), to wander back to after giving up on someone.
+var _home: Variant = null
+## Stopped at a save room's edge last frame.
+var _at_haven := false
 
 @onready var model: CharacterModel = $Model
 @onready var agent: NavigationAgent3D = $NavigationAgent3D
@@ -70,7 +79,10 @@ var _knockback := Vector3.ZERO
 
 
 ## Server: a sound at `at` that carries `radius` metres. Enemies that hear it come to look.
+## Noises inside a save room don't carry out of it.
 static func make_noise(tree: SceneTree, at: Vector3, radius: float) -> void:
+	if SafeRoom.covers(tree, at):
+		return
 	for enemy: Enemy in tree.get_nodes_in_group("enemies"):
 		enemy.hear(at, radius)
 
@@ -85,6 +97,8 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _home == null:
+		_home = global_position # placed by now (spawned enemies get their transform after _ready)
 	if not is_on_floor():
 		velocity.y -= gravity * delta
 	velocity.x = 0.0
@@ -97,10 +111,14 @@ func _physics_process(delta: float) -> void:
 
 	match state:
 		State.INVESTIGATE:
-			if _walk_to(_goal, delta, 0.7):
+			if _walk_to(_goal, delta, 0.7) or _at_haven:
 				_timer += delta
 				if _timer > SEARCH_TIME:
-					state = State.IDLE
+					# Searched: back to its post, so none is left loitering at a save room door.
+					if _home != null and _goal != _home and global_position.distance_to(_home) > 1.0:
+						_give_up()
+					else:
+						state = State.IDLE
 		State.CHASE:
 			_chase(delta)
 		State.STAGGERED:
@@ -109,14 +127,39 @@ func _physics_process(delta: float) -> void:
 			_knockback = _knockback.lerp(Vector3.ZERO, 1.0 - exp(-8.0 * delta))
 			_timer -= delta
 			if _timer <= 0.0:
-				state = State.CHASE if _is_valid_target(target) else State.IDLE
+				if _is_valid_target(target):
+					state = State.CHASE
+				else:
+					_give_up()
 		State.DOWNED:
 			_timer -= delta
 			if _timer <= 0.0:
 				health = max_health
 				state = State.IDLE
 				print("[enemy] %s got back up" % name)
+	_keep_out_of_havens()
 	move_and_slide()
+
+
+## Never into a save room: moving toward one stops with its body short of the edge (in
+## the doorway). One already inside (placed there by mistake) can still walk out.
+func _keep_out_of_havens() -> void:
+	var heading := Vector3(velocity.x, 0.0, velocity.z)
+	_at_haven = heading.length() > 0.01 \
+			and SafeRoom.covers(get_tree(), global_position + heading.normalized() * HAVEN_MARGIN) \
+			and not SafeRoom.covers(get_tree(), global_position)
+	if _at_haven:
+		velocity.x = 0.0
+		velocity.z = 0.0
+		_knockback = Vector3.ZERO
+
+
+## Lost its target (or they reached a save room): wander back to where it started.
+func _give_up() -> void:
+	target = null
+	_goal = _home if _home != null else global_position
+	_timer = 0.0
+	state = State.INVESTIGATE
 
 
 # --- Senses (server) -------------------------------------------------------------
@@ -169,8 +212,7 @@ func _can_hear_radio(player: Player, distance: float) -> bool:
 
 func _chase(delta: float) -> void:
 	if not _is_valid_target(target):
-		target = null
-		state = State.IDLE
+		_give_up()
 		return
 	var distance := global_position.distance_to(target.global_position)
 	# Still sensed? (_sense refreshes this while it can see or hear them.)
@@ -223,8 +265,9 @@ func _face(point: Vector3, delta: float) -> void:
 		rotation.y = lerp_angle(rotation.y, atan2(-to.x, -to.z), TURN_SPEED * delta)
 
 
+## Alive and out in the open: nobody in a save room can be hunted, seen or heard.
 func _is_valid_target(player: Player) -> bool:
-	return is_instance_valid(player) and player.health > 0
+	return is_instance_valid(player) and player.health > 0 and not SafeRoom.covers(get_tree(), player.global_position)
 
 
 ## Server only. Shot: it turns on whoever shot it.

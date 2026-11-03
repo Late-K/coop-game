@@ -262,6 +262,21 @@ def amb_lab():
     return crush(normalize_rms(loopify(out), -24), bits=11)
 
 
+def amb_safe():
+    """A save room: the one calm place. A soft, warm major pad breathing slowly over a heater's
+    low hum and a little tape air. No events, nothing sudden."""
+    n = length(16)
+    breath = [0.6 + 0.4 * math.sin(TAU * 0.0625 * i / SR) ** 2 for i in range(n)]
+    pad = mix(n, gain(tone(110.0, n), 0.6), gain(tone(110.6, n), 0.4), gain(tone(164.8, n), 0.45),
+              gain(tone(220.0, n, vibrato=(0.15, 1.0)), 0.3), gain(tone(277.2, n, vibrato=(0.2, 1.5)), 0.22),
+              gain(tone(329.6, n), 0.12))
+    pad = mul(lowpass(pad, 900), breath)
+    hum = mix(n, gain(tone(50, n), 0.25), gain(lowpass(noise(n, 50), 300), 0.5))
+    air = gain(bandpass(noise(n, 51), 800, 3000), 0.04)
+    out = mix(n, pad, hum, air)
+    return crush(normalize_rms(loopify(out, 2.0), -24), bits=12)
+
+
 def heater_loop():
     n = length(4)
     rng = random.Random(7)
@@ -513,6 +528,7 @@ SOUNDS = {
     "amb_facility": (amb_facility, True),
     "amb_whiteout": (amb_whiteout, True),
     "amb_lab": (amb_lab, True),
+    "amb_safe": (amb_safe, True),
     "heater_loop": (heater_loop, True),
     "lamp_hum": (lamp_hum, True),
     "step_snow": (lambda: step("snow"), False),

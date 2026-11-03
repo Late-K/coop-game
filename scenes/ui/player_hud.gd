@@ -89,6 +89,30 @@ func set_ammo(shown: bool, text: String) -> void:
 	_ammo_label.text = text
 
 
+## Restyles the HUD for this machine's player (UiStyle): ZP-SYS cyan on black for the
+## Subject, the handheld's red on near-black for the Visitor. Story lines keep their own box.
+func apply_style() -> void:
+	theme = Theme.new()
+	theme.default_font = UiStyle.font()
+	var frame := StyleBoxFlat.new()
+	frame.set_content_margin_all(8)
+	frame.content_margin_left = 14
+	frame.content_margin_right = 14
+	if UiStyle.visitor():
+		frame.bg_color = Color(UiStyle.screen, 0.95)
+		frame.border_color = UiStyle.accent
+		frame.set_border_width_all(2)
+		frame.set_corner_radius_all(5)
+	else:
+		frame.bg_color = Color(0, 0, 0, 0.92)
+		frame.border_color = UiStyle.accent.darkened(0.25)
+		frame.set_border_width_all(1)
+	_message_box.add_theme_stylebox_override("panel", frame)
+	var text := UiStyle.accent if UiStyle.visitor() else UiStyle.accent.lightened(0.35)
+	for label in [_message_label, _prompt_label, _ammo_label]:
+		label.modulate = text
+
+
 ## Radio.status_text(): bottom left, empty when nobody is talking.
 func set_radio(text: String) -> void:
 	_radio_label.text = text
