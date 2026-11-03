@@ -134,6 +134,9 @@
 		"keep": true,
 		"text": "You skipped that. And that. I wrote every one of these lines myself, {iteration} times. But no, go on. You're busy."
 	},
+	"collapse": {
+		"visitor": "Everything goes white. Then the hum of a lamp, close by, and the cold again."
+	},
 	"death": {
 		"speaker": "PROCTOR",
 		"text": "Again."

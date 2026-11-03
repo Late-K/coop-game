@@ -44,15 +44,20 @@ func _ready() -> void:
 		node.queue_free()
 
 	if not multiplayer.is_server():
+		SaveGame.level_ready_on_client()
 		return
-	for data in placed:
+	# Continuing a save: its world (what was still there) instead of the editor's.
+	var continuing := not SaveGame.pending.is_empty()
+	for data: Dictionary in SaveGame.pending["world"] if continuing else placed:
 		world_spawner.spawn(data)
 	multiplayer.peer_connected.connect(_add_player)
 	multiplayer.peer_disconnected.connect(_remove_player)
 	_add_player(1)
 	for id in multiplayer.get_peers():
 		_add_player(id)
-	get_tree().create_timer(INTRO_DELAY).timeout.connect(Story.play.bind(intro_lines))
+	if not continuing:
+		get_tree().create_timer(INTRO_DELAY).timeout.connect(Story.play.bind(intro_lines))
+	SaveGame.level_started(self)
 
 
 ## Server only. Shows the end card on both machines, then both return to the menu.

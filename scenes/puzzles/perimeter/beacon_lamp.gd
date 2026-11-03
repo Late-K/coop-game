@@ -23,6 +23,7 @@ var _hum: AudioStreamPlayer3D
 
 
 func _ready() -> void:
+	add_to_group("recovery_points")
 	var pole := MeshInstance3D.new()
 	var pole_mesh := CylinderMesh.new()
 	pole_mesh.top_radius = 0.08
@@ -87,6 +88,15 @@ func _ready() -> void:
 	add_child(_heat)
 	_hum = Sound.attach_loop("lamp_hum", self, -8.0, 10.0)
 	_hum.position = lamp.position
+
+
+## A Visitor who collapses in the snow wakes by the nearest lit lamp (Player._recover).
+func can_recover() -> bool:
+	return _pillar.visible
+
+
+func recovery_position() -> Vector3:
+	return global_position + global_basis.z * 1.5
 
 
 func set_active(active: bool) -> void:

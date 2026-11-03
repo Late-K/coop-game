@@ -24,8 +24,6 @@ const CAMERA_SNAP_DISTANCE := 12.0
 const CAMERA_DISTANCE := 18.0
 const CAMERA_DIRECTION := Vector3(0, 0.866025, 0.5)
 const CUT_FADE_TIME := 0.12
-const SUBJECT_COLOR := Color(0.78, 0.8, 0.82)
-const VISITOR_COLOR := Color(0.9, 0.5, 0.25)
 const MAX_HEALTH := 100
 const MAGAZINE_SIZE := 6
 const FIRE_COOLDOWN := 0.35
@@ -33,7 +31,12 @@ const RELOAD_TIME := 0.9
 const SHOT_RANGE := 25.0
 const SHOT_DAMAGE := 10
 const SHOT_MASK := 11 # physics layers 1 + 2 + 4: world, enemies and players (friendly fire)
-const RESPAWN_DELAY := 1.5
+## Seconds the dead player watches themselves fall before the screen goes black.
+const DEATH_WATCH := 0.6
+## Seconds a collapsed player stays out before waking by a lamp.
+const COLLAPSE_TIME := 1.2
+## The first-person moment inside the respawn pod.
+const POD_BEAT := 1.8
 const MAX_WARMTH := 100.0
 const FREEZING_DAMAGE_PER_SECOND := 4.0
 const NORMAL_BODY_TEMPERATURE := 36.6
@@ -57,7 +60,8 @@ var equipped := ""
 ## Personal storage, opened from any item box.
 var stash := Inventory.new(ItemBox.STASH_SLOTS)
 var loaded_rounds := 0
-var checkpoint := Vector3.ZERO
+## The joint save screen (only the local player has one in its overlay).
+var save_prompt := SavePrompt.new()
 var warmth := MAX_WARMTH
 var _freeze_damage := 0.0
 var _warned_cold := false
@@ -73,9 +77,12 @@ var _last_position := Vector3.ZERO
 var _listener := AudioListener3D.new()
 var _camera_distance := CAMERA_DISTANCE
 var _stride_left := STRIDE
+var _last_health := MAX_HEALTH
+## Waiting out a reload (the partner died): black screen, standing still.
+var _reload_wait := false
+var _partner_save_status := SaveGame.Status.AWAY
 
-@onready var body_mesh: MeshInstance3D = $Body
-@onready var nose: MeshInstance3D = $Nose
+@onready var model: CharacterModel = $Model
 @onready var nameplate: Label3D = $Nameplate
 @onready var interaction_area: Area3D = $InteractionArea
 @onready var zone_probe: Area3D = $ZoneProbe
@@ -112,6 +119,7 @@ func _ready() -> void:
 	if is_multiplayer_authority():
 		# The world renders at low res; move the HUD and fades out to the window itself
 		# so they stay sharp. They are no longer our children, so _exit_tree frees them.
+		overlay.add_child(save_prompt)
 		overlay.reparent(get_tree().root, false)
 		third_person_camera.make_current()
 		# Hear the world from the character (not the camera, which may be framing a room),
@@ -119,9 +127,11 @@ func _ready() -> void:
 		_listener.top_level = true
 		add_child(_listener)
 		_listener.make_current()
-		checkpoint = global_position
 		inventory.changed.connect(_refresh_hud)
 		_refresh_hud()
+		SaveGame.statuses_changed.connect(_on_save_statuses)
+		# Continuing a save: the server puts us where the save has us.
+		SaveGame.request_player_state.call_deferred()
 	else:
 		# Remote players are positioned by the synchronizer, not simulated or controlled here.
 		set_physics_process(false)
@@ -145,13 +155,12 @@ func _apply_role() -> void:
 	nameplate.text = Session.ROLE_NAMES[role]
 	# Only your partner's name floats over them; you know who you are.
 	nameplate.visible = not is_multiplayer_authority()
-	var material := StandardMaterial3D.new()
-	material.albedo_color = SUBJECT_COLOR if role == Session.Role.SUBJECT else VISITOR_COLOR
-	body_mesh.material_override = material
+	model.look = CharacterModel.Look.SUBJECT if role == Session.Role.SUBJECT else CharacterModel.Look.VISITOR
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _cutting or _in_cutaway or is_dead or inventory_screen.visible or _pause_menu_open():
+	if (_cutting or _in_cutaway or is_dead or inventory_screen.visible or _pause_menu_open()
+			or save_prompt.visible or _reload_wait):
 		return
 	if focus:
 		if event.is_action_pressed("interact") or event.is_action_pressed("ui_cancel"):
@@ -175,6 +184,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(_delta: float) -> void:
 	_update_footsteps()
+	_update_model()
 	# Runs on every peer so the partner sees your laser too.
 	laser.visible = is_aiming
 	if is_aiming:
@@ -191,8 +201,10 @@ func _physics_process(delta: float) -> void:
 	_fire_cooldown = maxf(_fire_cooldown - delta, 0.0)
 
 	var frozen := (focus != null or _cutting or _in_cutaway or is_dead or inventory_screen.visible
-			or _pause_menu_open())
+			or _pause_menu_open() or save_prompt.visible or _reload_wait)
 	var input := Vector2.ZERO if frozen else Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+	if model.pose == CharacterModel.Pose.WAITING and input != Vector2.ZERO:
+		_set_waiting.rpc(false) # done waiting: stand up
 	is_aiming = not frozen and Input.is_action_pressed("aim") and equipped != "" and inventory.has(equipped)
 	hud.set_ammo(is_aiming, "%s  %d / %d" % [Items.display_name(equipped).to_upper(), loaded_rounds,
 			inventory.count_of("ammo")] if is_aiming else "")
@@ -240,6 +252,8 @@ func _update_camera(delta: float) -> void:
 
 
 func _use(target: Interactable) -> void:
+	model.play_gesture("interact")
+	_play_gesture.rpc("interact")
 	if target.view_point:
 		_enter_focus(target)
 	else:
@@ -298,8 +312,7 @@ func _view_third_person() -> void:
 
 ## Hidden on this machine only while in first person, so you never see your own back.
 func _set_own_body_visible(shown: bool) -> void:
-	body_mesh.visible = shown
-	nose.visible = shown
+	model.visible = shown
 
 
 ## Hard cut through black, Signalis-style: fade out, `swap`, fade in.
@@ -518,9 +531,99 @@ func _unload_into(put: Callable) -> void:
 	_refresh_hud()
 
 
-func set_checkpoint(point: Vector3) -> void:
-	checkpoint = point
-	notify("Checkpoint saved")
+# --- Saving and reloading (see SaveGame) ----------------------------------------------
+
+func open_save_prompt(terminal: SaveTerminal) -> void:
+	if focus or _cutting or _in_cutaway or is_dead or inventory_screen.visible:
+		return
+	save_prompt.open(self, terminal)
+
+
+## What a save keeps of this player (sent when confirming at a terminal).
+func save_state() -> Dictionary:
+	return {
+		"inventory": inventory.slots.duplicate(true), "stash": stash.slots.duplicate(true),
+		"equipped": equipped, "loaded_rounds": loaded_rounds, "health": health, "warmth": warmth,
+	}
+
+
+## Server -> owner: put this player back as `state` has it (empty: as at the chapter start)
+## at `at`. Modes: "start" (continuing a save), "pod" (died: wake in the respawn pod),
+## "respawn" (died before any save: back at the start), "waiting" (the partner died: back
+## at the save room, sitting).
+@rpc("any_peer", "call_local", "reliable")
+func restore(state: Dictionary, at: Transform3D, mode: String) -> void:
+	if multiplayer.get_remote_sender_id() != 1 or not is_multiplayer_authority():
+		return
+	_fill(inventory, state.get("inventory", []))
+	_fill(stash, state.get("stash", []))
+	equipped = state.get("equipped", "")
+	loaded_rounds = state.get("loaded_rounds", 0)
+	health = state.get("health", MAX_HEALTH)
+	warmth = state.get("warmth", MAX_WARMTH)
+	_last_health = health
+	is_dead = false
+	_reload_wait = false
+	if inventory_screen.visible:
+		close_inventory()
+	save_prompt.close()
+	if focus:
+		focus.has_local_focus = false
+		focus = null
+	global_position = at.origin
+	rotation.y = at.basis.get_euler().y
+	velocity = Vector3.ZERO
+	camera_rig.global_position = global_position
+	_refresh_hud()
+	if mode == "start":
+		return
+	_set_waiting.rpc(mode == "waiting")
+	var tween := create_tween()
+	if mode == "pod":
+		# Wake inside the pod, looking out through the glass, then step out.
+		_in_cutaway = true
+		_view_first_person(Transform3D(at.basis, at.origin + at.basis.z * 0.9 + Vector3.UP * 1.55))
+		tween.tween_property(fade, "color:a", 0.0, 0.8)
+		tween.tween_interval(POD_BEAT)
+		tween.tween_callback(func() -> void:
+			_view_third_person()
+			_in_cutaway = false
+			Story.show_local("death")
+		)
+	else:
+		_view_third_person()
+		tween.tween_property(fade, "color:a", 0.0, 1.2)
+
+
+func _fill(target: Inventory, slots: Array) -> void:
+	for i in target.slots.size():
+		target.slots[i] = (slots[i] as Dictionary).duplicate() if i < slots.size() else {}
+	target.changed.emit()
+
+
+## The partner died: this screen goes black too, while the server reloads the save.
+func wait_for_reload() -> void:
+	_reload_wait = true
+	if inventory_screen.visible:
+		close_inventory()
+	save_prompt.close()
+	create_tween().tween_property(fade, "color:a", 1.0, 1.0)
+
+
+@rpc("authority", "call_local", "reliable")
+func _set_waiting(waiting: bool) -> void:
+	model.pose = CharacterModel.Pose.WAITING if waiting else CharacterModel.Pose.LIVE
+
+
+## Tells this player when the partner goes to a save terminal while they are elsewhere.
+func _on_save_statuses() -> void:
+	var partner := SaveGame.partner_status()
+	if partner != _partner_save_status and not save_prompt.visible:
+		if partner == SaveGame.Status.AT_TERMINAL:
+			notify("Your partner is at a save terminal")
+		elif partner == SaveGame.Status.READY:
+			notify("Your partner is ready to save. Find a save terminal")
+	_partner_save_status = partner
 
 
 ## A short message for this player: on the terminal's hint line while it's open, else on the HUD.
@@ -604,6 +707,7 @@ func _request_shot(origin: Vector3, direction: Vector3) -> void:
 func _show_shot(from: Vector3, to: Vector3) -> void:
 	if multiplayer.get_remote_sender_id() != 1:
 		return
+	model.play_shot()
 	# Loud and far-reaching: the partner hears your fights, muffled, from other rooms.
 	Sound.play_at("gunshot", from, 8.0, 60.0)
 	if from.distance_to(to) < 0.05:
@@ -617,6 +721,22 @@ func _show_shot(from: Vector3, to: Vector3) -> void:
 	add_child(tracer)
 	tracer.look_at_from_position((from + to) / 2.0, to)
 	get_tree().create_timer(0.06).timeout.connect(tracer.queue_free)
+
+
+## The model follows synced state on every peer: aiming, and health (a drop is a hit; zero
+## is death, until the respawn restores it).
+func _update_model() -> void:
+	model.aiming = is_aiming
+	model.dead = health <= 0
+	if health < _last_health and health > 0:
+		model.play_hurt()
+	_last_health = health
+
+
+## A gesture for the partner's copy of this character (they can't see your input).
+@rpc("authority", "call_remote", "unreliable")
+func _play_gesture(gesture: String) -> void:
+	model.play_gesture(gesture)
 
 
 ## Called by the server (enemies) on the owning peer.
@@ -640,33 +760,62 @@ func _hurt(amount: int) -> void:
 		_die()
 
 
+## You watch yourself fall, then black. A real death reloads both players to the save
+## (SaveGame); where nothing can kill yet (a non-lethal EnvironmentZone), it is a collapse:
+## you wake by the nearest lit lamp and nothing else changes.
 func _die() -> void:
 	is_dead = true
 	Sound.play_ui("death")
 	if inventory_screen.visible:
 		inventory_screen.close()
+	save_prompt.close()
 	MetaSave.record("deaths")
 	if focus:
 		focus.has_local_focus = false
 		focus = null
-	notify("You died")
 	var tween := create_tween()
-	tween.tween_property(fade, "color:a", 1.0, 0.6)
-	tween.tween_interval(RESPAWN_DELAY)
-	tween.tween_callback(_respawn)
-	tween.tween_property(fade, "color:a", 0.0, 0.4)
+	tween.tween_interval(DEATH_WATCH)
+	tween.tween_property(fade, "color:a", 1.0, 0.8)
+	if _in_safe_zone():
+		tween.tween_interval(COLLAPSE_TIME)
+		tween.tween_callback(_recover)
+		tween.tween_property(fade, "color:a", 0.0, 0.8)
+	else:
+		tween.tween_callback(func() -> void: SaveGame.report_death(global_position, rotation.y))
 
 
-func _respawn() -> void:
-	global_position = checkpoint
+func _in_safe_zone() -> bool:
+	for area in zone_probe.get_overlapping_areas():
+		if area is EnvironmentZone and not area.lethal:
+			return true
+	return false
+
+
+func _recover() -> void:
+	global_position = _recovery_point()
 	velocity = Vector3.ZERO
 	health = MAX_HEALTH
 	warmth = MAX_WARMTH
+	_last_health = health
 	is_dead = false
-	Story.show_local("death")
 	_view_third_person()
 	camera_rig.global_position = global_position
 	_refresh_hud()
+	Story.show_local("collapse")
+
+
+## The nearest lit lamp, else this role's start point.
+func _recovery_point() -> Vector3:
+	var best := Vector3.INF
+	for point in get_tree().get_nodes_in_group("recovery_points"):
+		if point.can_recover():
+			var at: Vector3 = point.recovery_position()
+			if best == Vector3.INF or at.distance_to(global_position) < best.distance_to(global_position):
+				best = at
+	if best != Vector3.INF:
+		return best
+	var level := get_tree().get_first_node_in_group("level") as Level
+	return (level.subject_start if role == Session.Role.SUBJECT else level.visitor_start).global_position
 
 
 # --- Cold --------------------------------------------------------------------

@@ -9,6 +9,9 @@ const MOVE_TIME := 1.2
 
 ## Placed closed in the editor; starts sunk into the floor when true (e.g. an entrance).
 @export var start_open := false
+## Saved (SaveGame): reloading after a death puts this back as it was at the last save,
+## unless it should stay as it is now.
+@export var keep_on_reload := false
 
 var is_open := false
 
@@ -16,9 +19,20 @@ var is_open := false
 
 
 func _ready() -> void:
+	add_to_group(SaveGame.SAVED_GROUP)
 	if start_open:
 		is_open = true
 		position.y = _closed_y - OPEN_DROP
+
+
+func save_state() -> Variant:
+	return is_open
+
+
+## Instant: reloads happen behind a black screen.
+func load_state(state: Variant) -> void:
+	is_open = state
+	position.y = _closed_y - (OPEN_DROP if is_open else 0.0)
 
 
 @rpc("authority", "call_local", "reliable")

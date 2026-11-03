@@ -26,6 +26,7 @@
 [ext_resource type="Texture2D" path="res://textures/wall_panel.png" id="24_r"]
 [ext_resource type="Texture2D" path="res://textures/hazard.png" id="25_r"]
 [ext_resource type="Script" path="res://scenes/radio/radio_signal.gd" id="26_r"]
+[ext_resource type="PackedScene" path="res://scenes/characters/character_model.tscn" id="27_r"]
 
 [sub_resource type="Environment" id="Environment_facility"]
 background_mode = 1
@@ -845,6 +846,7 @@ environment = SubResource("Environment_whiteout")
 ambience = "amb_whiteout"
 footsteps = "step_snow"
 radio_interference = 0.3
+lethal = false
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Zones/Whiteout"]
 shape = SubResource("Box_5")
@@ -1074,10 +1076,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
 mesh = SubResource("BoxMesh_ice")
 surface_material_override/0 = SubResource("Material_ice")
 
-[node name="Body" type="MeshInstance3D" parent="FrozenBody"]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0.45, 0)
-mesh = SubResource("CapsuleMesh_body")
-surface_material_override/0 = SubResource("Material_subject_body")
+[node name="Body" parent="FrozenBody" instance=ExtResource("27_r")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -0.88, 0.3, 0)
+look = 0
+pose = 1
 
 [node name="ViewPoint" type="Marker3D" parent="FrozenBody"]
 transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 1.7, 1.5)

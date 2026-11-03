@@ -9,10 +9,18 @@ extends Interactable
 @export var on_lines: Array[String] = []
 
 var is_on := false
+## Saved (SaveGame): reloading after a death puts this back as it was at the last save,
+## unless it should stay as it is now.
+## (Its doors are saved themselves.)
+@export var keep_on_reload := false
 
 @onready var zone: TemperatureZone = $Zone
 @onready var light: PowerLight = $Light
 @onready var _hum := Sound.attach_loop("heater_loop", self, -4.0, 10.0)
+
+
+func _ready() -> void:
+	add_to_group(SaveGame.SAVED_GROUP)
 
 
 func get_prompt(_player: Player) -> String:
@@ -52,9 +60,25 @@ func _insert_cell() -> void:
 
 @rpc("authority", "call_local", "reliable")
 func _turn_on() -> void:
-	is_on = true
-	_hum.play()
-	zone.set_active(true)
-	light.set_active(true)
+	_set_on(true)
 	for door in doors:
 		door.set_open(true)
+
+
+func _set_on(on: bool) -> void:
+	is_on = on
+	if on:
+		_hum.play()
+	else:
+		_hum.stop()
+	zone.set_active(on)
+	light.set_active(on)
+
+
+func save_state() -> Variant:
+	return is_on
+
+
+func load_state(state: Variant) -> void:
+	if state != is_on:
+		_set_on(state)

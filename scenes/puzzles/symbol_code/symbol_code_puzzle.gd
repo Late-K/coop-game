@@ -18,12 +18,17 @@ const CODE_LENGTH := 4
 ## Story lines played for both players when the code is accepted.
 @export var solved_lines: Array[String] = []
 
+## Saved (SaveGame): reloading after a death puts this back as it was at the last save,
+## unless it should stay as it is now. A learned code stays solved by default.
+@export var keep_on_reload := true
+
 var code := PackedInt32Array()
 var entered := PackedInt32Array()
 var solved := false
 
 
 func _ready() -> void:
+	add_to_group(SaveGame.SAVED_GROUP)
 	keypad.symbol_pressed.connect(_on_keypad_symbol_pressed)
 	if not multiplayer.is_server():
 		# Ask once our copy of the level exists; pushing from the server could arrive too early.
@@ -78,6 +83,14 @@ func _apply_state(new_code: PackedInt32Array, new_entered: PackedInt32Array, new
 		door.set_open(solved)
 	for node in activate:
 		node.set_active(solved)
+
+
+func save_state() -> Variant:
+	return {"code": code, "solved": solved}
+
+
+func load_state(state: Variant) -> void:
+	_apply_state(state["code"], PackedInt32Array(), state["solved"])
 
 
 @rpc("authority", "call_local", "reliable")

@@ -1,6 +1,8 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene format=3]
 
 [ext_resource type="Script" path="res://scenes/props/save_terminal.gd" id="1_save"]
+[ext_resource type="Material" path="res://kit/materials/metal_dark.tres" id="2_metal"]
+[ext_resource type="Material" path="res://kit/materials/metal_light.tres" id="3_light"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_reach"]
 size = Vector3(1.2, 2, 1.2)
@@ -16,9 +18,29 @@ albedo_color = Color(0.1, 0.4, 0.15, 1)
 emission_enabled = true
 emission = Color(0.2, 0.9, 0.35, 1)
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_pod"]
+size = Vector3(1, 2.2, 0.9)
+
+[sub_resource type="BoxMesh" id="BoxMesh_pod_back"]
+size = Vector3(1, 2.2, 0.08)
+
+[sub_resource type="BoxMesh" id="BoxMesh_pod_side"]
+size = Vector3(0.08, 2.2, 0.9)
+
+[sub_resource type="BoxMesh" id="BoxMesh_pod_cap"]
+size = Vector3(1, 0.12, 0.9)
+
+[sub_resource type="QuadMesh" id="QuadMesh_glass"]
+size = Vector2(0.84, 1.96)
+
+[sub_resource type="StandardMaterial3D" id="Material_glass"]
+transparency = 1
+albedo_color = Color(0.55, 0.8, 0.85, 0.25)
+roughness = 0.1
+
 [node name="SaveTerminal" type="Area3D"]
 script = ExtResource("1_save")
-prompt = "Save (set checkpoint)"
+prompt = "Save terminal"
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0.6)
@@ -39,5 +61,53 @@ light_color = Color(0.3, 1, 0.45, 1)
 light_energy = 0.6
 omni_range = 2.5
 
+[node name="Pod" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2, 0, 0)
+input_ray_pickable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Pod"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0.45)
+shape = SubResource("BoxShape3D_pod")
+
+[node name="Back" type="MeshInstance3D" parent="Pod"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0.04)
+mesh = SubResource("BoxMesh_pod_back")
+surface_material_override/0 = ExtResource("2_metal")
+
+[node name="SideL" type="MeshInstance3D" parent="Pod"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.46, 1.1, 0.45)
+mesh = SubResource("BoxMesh_pod_side")
+surface_material_override/0 = ExtResource("3_light")
+
+[node name="SideR" type="MeshInstance3D" parent="Pod"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.46, 1.1, 0.45)
+mesh = SubResource("BoxMesh_pod_side")
+surface_material_override/0 = ExtResource("3_light")
+
+[node name="Top" type="MeshInstance3D" parent="Pod"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.14, 0.45)
+mesh = SubResource("BoxMesh_pod_cap")
+surface_material_override/0 = ExtResource("2_metal")
+
+[node name="Base" type="MeshInstance3D" parent="Pod"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0.45)
+mesh = SubResource("BoxMesh_pod_cap")
+surface_material_override/0 = ExtResource("2_metal")
+
+[node name="Glass" type="MeshInstance3D" parent="Pod"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0.89)
+mesh = SubResource("QuadMesh_glass")
+surface_material_override/0 = SubResource("Material_glass")
+cast_shadow = 0
+
+[node name="Light" type="OmniLight3D" parent="Pod"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.95, 0.45)
+light_color = Color(0.7, 0.95, 1, 1)
+light_energy = 0.5
+omni_range = 2.2
+
 [node name="RespawnPoint" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 1.2)
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 1.2, 0.1, 1.35)
+
+[node name="WaitPoint" type="Marker3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -0.85, 0.1, 0.55)

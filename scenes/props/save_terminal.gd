@@ -1,11 +1,19 @@
 class_name SaveTerminal
 extends Interactable
-## Checkpoint terminal: using it makes this the player's respawn point.
-## Saving to disk comes later; for now it only decides where you come back after dying.
+## Save terminal with its respawn pod. Using it opens the joint save prompt (SavePrompt):
+## saving needs both players, each at a terminal. Whoever saved here comes back here: out of
+## the pod after dying, or sitting by the terminal when their partner died.
 
 @onready var respawn_point: Marker3D = $RespawnPoint
+@onready var wait_point: Marker3D = $WaitPoint
 
 
 func interact(player: Player) -> void:
-	player.set_checkpoint(respawn_point.global_position)
+	player.open_save_prompt(self)
 	used.emit(player)
+
+
+## Where a player comes back: in front of the pod, or (waiting) by the terminal. The pod's
+## first-person view is 0.8 m behind and 1.55 m above the respawn point, inside the pod.
+func respawn_transform(waiting: bool) -> Transform3D:
+	return (wait_point if waiting else respawn_point).global_transform

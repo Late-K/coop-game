@@ -75,6 +75,12 @@ Interactive pieces live with their systems: doors (`scenes/props/door.tscn`, in 
 - **TemperatureZone**: cold areas. **StoryTrigger** and **ExamineSpot** (Story): lines and narration.
 - **Placements**: anything created or destroyed during play (pickups, enemies). The server re-spawns them for both players.
 
+## Saving and dying
+- **Save rooms come in pairs**, one on each player's side, and sparse. Each needs `scenes/props/save_terminal.tscn` (terminal plus respawn pod): give it **1.2 m clear to its right** for the pod and about **1.5 m in front**, back against a wall. An item box nearby.
+- **Anything with state that a reload must put back** joins the `saved` group and has `save_state() -> Variant`, `load_state(state)` (applied on both machines, instantly: the screen is black) and an exported `keep_on_reload`. Doors, the heater, code puzzles, the beacon network and story triggers already do. Set `keep_on_reload` per puzzle: on means a death does not undo it (a learned code), off means it resets (power, valves, lamps).
+- Pickups and enemies under **Placements** reset automatically.
+- **EnvironmentZone `lethal = false`** marks places where nothing can kill yet (Chapter 1's whiteout): dying there is a collapse, waking by the nearest lit beacon lamp (or the role's start), with no reload.
+
 ## Rebuilding the kit
 After changing textures or pieces (from the project root):
 ```

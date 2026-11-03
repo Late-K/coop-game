@@ -16,10 +16,15 @@ const MAX_LIT := 2
 @export var lamps: Array[BeaconLamp] = []
 
 ## Symbols of the lit lamps, oldest first.
+## Saved (SaveGame): reloading after a death puts this back as it was at the last save,
+## unless it should stay as it is now.
+@export var keep_on_reload := false
+
 var lit := PackedInt32Array()
 
 
 func _ready() -> void:
+	add_to_group(SaveGame.SAVED_GROUP)
 	keypad.symbol_pressed.connect(func(symbol: int) -> void: _toggle.rpc_id(1, symbol))
 	if not multiplayer.is_server():
 		_request_state.rpc_id(1)
@@ -46,6 +51,14 @@ func _toggle(symbol: int) -> void:
 		if lit.size() > MAX_LIT:
 			lit.remove_at(0) # the oldest lamp goes dark
 	_apply_state.rpc(lit)
+
+
+func save_state() -> Variant:
+	return lit
+
+
+func load_state(state: Variant) -> void:
+	_apply_state(state)
 
 
 @rpc("any_peer", "reliable")

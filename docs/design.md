@@ -205,8 +205,8 @@ PS1 / low-poly retro: low-res render (~480×270) upscaled with nearest filtering
   - Done: story systems, PS1 pass, Chapter 1 blockout (`scenes/levels/chapter_1.tscn`). Next: playtests, then art/audio passes.
 - **Foundations before level design** (from the Core rules), in order:
   1. Level-building kit: a fixed grid and modular pieces placed in the editor. ✓ (see `docs/level_kit.md`)
-  2. Character models and animation (the bodies have to look like the players).
-  3. Saving, joint save prompt, death reload, respawn pod, persistent bodies.
+  2. Character models and animation (the bodies have to look like the players). ✓ Segmented low-poly figures built in code (`scenes/characters/character_model.gd`), stepped 15 fps animation: idle, walk, aim, recoil, hurt, death, interact, shove, waiting (sitting) and corpse poses. The Subject is a pale, featureless mannequin that never breathes, with a faint light at the nape; the Visitor wears an orange parka, hood and backpack. The body in Chapter 1's ice is now a Subject corpse.
+  3. Saving, joint save prompt, death reload, respawn pod, persistent bodies. ✓ (`autoload/save_game.gd`; the lobby's Continue; a new game saves its start, so a death before the first save reloads the chapter start)
   4. Shove, enemy pathfinding, the radio listener, radio power switch.
   5. MAP and FILES tabs; per-role visibility.
 - **M5** Steam lobbies + in-game radio voice. Radio done ✓; Steam next.

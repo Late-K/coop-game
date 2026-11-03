@@ -4,10 +4,12 @@ extends Control
 ## the host starts once both roles are taken. Built in code like PlayerHud.
 
 signal start_requested
+signal continue_requested
 signal leave_requested
 
 var _role_buttons := {} # Session.Role -> Button
 var _start_button := Button.new()
+var _continue_button := Button.new()
 var _leave_button := Button.new()
 var _status_label := Label.new()
 var _radio_label := Label.new()
@@ -41,6 +43,9 @@ func _ready() -> void:
 		column.add_child(button)
 		_role_buttons[role] = button
 
+	_continue_button.text = "Continue"
+	_continue_button.pressed.connect(continue_requested.emit)
+	column.add_child(_continue_button)
 	_start_button.text = "Start"
 	_start_button.pressed.connect(start_requested.emit)
 	column.add_child(_start_button)
@@ -87,6 +92,9 @@ func refresh() -> void:
 
 	_start_button.visible = multiplayer.is_server()
 	_start_button.disabled = not Session.is_ready_to_start()
+	_start_button.text = "New game" if SaveGame.has_save() else "Start"
+	_continue_button.visible = multiplayer.is_server() and SaveGame.has_save()
+	_continue_button.disabled = not Session.is_ready_to_start()
 	if multiplayer.get_peers().is_empty():
 		_status_label.text = "Waiting for your partner to join..."
 	elif not Session.is_ready_to_start():

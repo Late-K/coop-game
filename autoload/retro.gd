@@ -65,15 +65,18 @@ func _update_view() -> void:
 func _on_node_added(node: Node) -> void:
 	if node is GeometryInstance3D:
 		# Deferred: scripts usually assign their materials in _ready, after this signal.
-		_convert_node.call_deferred(node)
+		_convert_node.call_deferred(node.get_instance_id())
 	elif node is GridMap:
-		_convert_grid.call_deferred(node)
+		_convert_grid.call_deferred(node.get_instance_id())
 
 
 ## A GridMap draws its MeshLibrary's meshes directly, so the library itself is swapped for
 ## a copy whose meshes use the PS1 materials (one copy per library, shared by all grids).
-func _convert_grid(grid: GridMap) -> void:
-	if not is_instance_valid(grid) or grid.mesh_library == null:
+## Takes the node's instance id: by the time this deferred call runs the node may already be
+## freed (scripts that rebuild their meshes), and a freed object can't be passed along.
+func _convert_grid(instance_id: int) -> void:
+	var grid := instance_from_id(instance_id) as GridMap
+	if grid == null or grid.mesh_library == null:
 		return
 	var source := grid.mesh_library
 	if not _converted.has(source):
@@ -92,8 +95,9 @@ func _convert_grid(grid: GridMap) -> void:
 	grid.mesh_library = _converted[source]
 
 
-func _convert_node(node: GeometryInstance3D) -> void:
-	if not is_instance_valid(node):
+func _convert_node(instance_id: int) -> void:
+	var node := instance_from_id(instance_id) as GeometryInstance3D
+	if node == null:
 		return
 	if node.material_override:
 		node.material_override = _convert(node.material_override)

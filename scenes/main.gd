@@ -3,7 +3,7 @@ extends Node
 ## Flow: menu -> host/join -> lobby (pick roles) -> host starts -> level.
 ## Only the server picks the level; LevelSpawner replicates it to the client.
 ##
-## Dev shortcut: pass `-- --host` or `-- --join[=ip]` on the command line
+## Dev shortcut: pass `-- --host` (add `--continue` to load the save) or `-- --join[=ip]` on the command line
 ## (or in Debug > Customize Run Instances) to skip the menu. `--host` also skips
 ## the lobby and starts at once; roles then go to whoever is free (`--role=visitor`
 ## picks one for the host).
@@ -40,6 +40,7 @@ func _ready() -> void:
 	menu.host_requested.connect(_on_host_requested)
 	menu.join_requested.connect(_on_join_requested)
 	lobby.start_requested.connect(_start_game)
+	lobby.continue_requested.connect(_continue_game)
 	lobby.leave_requested.connect(_return_to_menu.bind("Left the lobby."))
 	level_spawner.spawned.connect(_on_level_spawned)
 	multiplayer.connected_to_server.connect(_on_connected_to_server)
@@ -160,7 +161,19 @@ func _on_peer_disconnected(_id: int) -> void:
 
 ## Server only.
 func _start_game() -> void:
+	SaveGame.pending = {}
 	_load_level(_level_path)
+	_enter_game()
+
+
+## Host: picks up from the last save (both machines keep a copy; the host's is used).
+func _continue_game() -> void:
+	var save := SaveGame.read_save()
+	if save.is_empty():
+		_start_game()
+		return
+	SaveGame.pending = save
+	_load_level(save["level"])
 	_enter_game()
 
 
@@ -238,7 +251,10 @@ func _handle_dev_args() -> void:
 			_on_host_requested()
 			if "--role=visitor" in args:
 				Session.request_role(Session.Role.VISITOR)
-			_start_game()
+			if "--continue" in args:
+				_continue_game()
+			else:
+				_start_game()
 		elif arg == "--join":
 			_on_join_requested("127.0.0.1")
 		elif arg.begins_with("--join="):

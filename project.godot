@@ -30,6 +30,7 @@ Story="*res://autoload/story.gd"
 Retro="*res://autoload/retro.gd"
 Sound="*res://autoload/sound.gd"
 Radio="*res://autoload/radio.gd"
+SaveGame="*res://autoload/save_game.gd"
 
 [display]
 
