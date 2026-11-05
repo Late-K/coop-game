@@ -2,15 +2,21 @@ class_name RadioTuner
 extends HBoxContainer
 ## The terminal's RADIO tab: a tuner for the radio band (see Radio). A scrolling scale under
 ## a fixed needle, a signal meter, an oscilloscope, and what a station says once it comes in
-## clearly. Tuning away from the partner channel cuts you off from your partner (voice and
-## messages) until you tune back, or they tune to you. This is also the only place to
-## write a text message (for players without a microphone); recent ones are listed.
+## clearly. Like a real set: whoever is tuned to the same frequency hears you, wherever on
+## the band that is. PING sends a call tone, CALL keeps calling, SCAN runs up the band until
+## something comes in, and one frequency can be kept in memory (STORE, then MEM to go back).
+## This is also the only place to write a text message (for players without a microphone);
+## recent ones are listed.
 
 ## MHz shown either side of the needle.
 const SCALE_SPAN := 4.0
-## Holding a direction sweeps after this long, at SWEEP_RATE steps per second.
-const SWEEP_DELAY := 0.35
-const SWEEP_RATE := 14.0
+## Holding a direction sweeps after this long, at SWEEP_RATE steps per second, speeding up
+## to SWEEP_MAX over SWEEP_RAMP seconds. With Shift each step is COARSE_STEPS (1 MHz).
+const SWEEP_DELAY := 0.25
+const SWEEP_RATE := 20.0
+const SWEEP_MAX := 160.0
+const SWEEP_RAMP := 1.5
+const COARSE_STEPS := 10
 const TYPE_RATE := 30.0
 const MESSAGES_SHOWN := 3
 
@@ -23,12 +29,18 @@ var _transcript: Label
 var _messages := VBoxContainer.new()
 var _chat_input := LineEdit.new()
 var _home: Button
+var _store: Button
+var _ping: Button
+var _call: Button
+var _scan: Button
 var _power: Button
 var _scope := Control.new()
 var _held_direction := 0
 var _held := 0.0
 var _sweep := 0.0
 var _time := 0.0
+## When the dial last clicked (so a fast sweep doesn't rattle).
+var _clicked := -1.0
 var _shown_station: RadioSignal = null
 var _typed := 0.0
 var _rng := RandomNumberGenerator.new()
@@ -52,12 +64,28 @@ func _init() -> void:
 	_meter_label = InventoryScreen._label("", 14, UiStyle.accent)
 	status.add_child(_meter_label)
 	status.add_child(InventoryScreen._spacer_v())
-	_home = InventoryScreen._button("PARTNER CHANNEL %.1f" % Radio.HOME_FREQUENCY, 14)
+	_ping = InventoryScreen._button("PING  [B]", 14)
+	_ping.pressed.connect(Radio.send_ping)
+	status.add_child(_ping)
+	_call = InventoryScreen._button("", 14)
+	_call.pressed.connect(func() -> void: Radio.set_calling(not Radio.calling))
+	status.add_child(_call)
+	_scan = InventoryScreen._button("", 14)
+	_scan.pressed.connect(func() -> void: Radio.set_scanning(not Radio.scanning))
+	status.add_child(_scan)
+	_home = InventoryScreen._button("", 14)
 	_home.pressed.connect(func() -> void:
-		Radio.tune(Radio.HOME_FREQUENCY)
+		Radio.set_scanning(false)
+		Radio.tune(Radio.channel)
 		dial.grab_focus()
 	)
 	status.add_child(_home)
+	_store = InventoryScreen._button("STORE", 14)
+	_store.pressed.connect(func() -> void:
+		Radio.store(Radio.frequency)
+		Sound.play_ui("keypad_press", -10.0, 1.4)
+	)
+	status.add_child(_store)
 
 	var main := VBoxContainer.new()
 	main.size_flags_horizontal = SIZE_EXPAND_FILL
@@ -99,13 +127,13 @@ func _init() -> void:
 
 
 func open() -> void:
-	# Down from the dial: the message field, then the partner channel button. Up: power.
+	# Down from the dial: the message field, then the buttons in a column. Up: power.
 	dial.focus_neighbor_top = dial.get_path_to(_power)
 	_power.focus_neighbor_bottom = _power.get_path_to(dial)
-	dial.focus_neighbor_bottom = dial.get_path_to(_chat_input)
-	_chat_input.focus_neighbor_top = _chat_input.get_path_to(dial)
-	_chat_input.focus_neighbor_bottom = _chat_input.get_path_to(_home)
-	_home.focus_neighbor_top = _home.get_path_to(_chat_input)
+	var chain: Array[Control] = [dial, _chat_input, _ping, _call, _scan, _home, _store]
+	for i in chain.size() - 1:
+		chain[i].focus_neighbor_bottom = chain[i].get_path_to(chain[i + 1])
+		chain[i + 1].focus_neighbor_top = chain[i + 1].get_path_to(chain[i])
 	dial.grab_focus()
 
 
@@ -131,6 +159,12 @@ func _process(delta: float) -> void:
 
 	_power.text = "POWER: ON" if Radio.powered else "POWER: OFF"
 	_chat_input.editable = Radio.powered
+	for button: Button in [_ping, _call, _scan, _store]:
+		button.disabled = not Radio.powered
+	_call.text = "CALL: ON" if Radio.calling else "CALL: OFF"
+	_scan.text = "SCAN: ON" if Radio.scanning else "SCAN"
+	_home.visible = Radio.channel_known
+	_home.text = "MEM %.1f" % Radio.channel
 	if not Radio.powered:
 		_frequency_label.text = "----- MHz"
 		_channel_label.text = "POWER OFF\nNo voice, messages or stations. Nothing can track it."
@@ -143,10 +177,11 @@ func _process(delta: float) -> void:
 		return
 	var home := Radio.on_home_channel()
 	_frequency_label.text = "%.1f MHz" % Radio.frequency
-	_channel_label.text = "PARTNER CHANNEL" if home \
-			else "OFF CHANNEL\nYour partner can't hear you here unless they tune in too."
+	_channel_label.text = "SCANNING..." if Radio.scanning \
+			else "MEMORY" if home \
+			else "Anyone tuned here hears you."
 	_channel_label.modulate = UiStyle.accent if home else PlayerHud.RADIO_COLOR
-	var strength := Radio.station_strength
+	var strength := maxf(Radio.station_strength, Radio.partner_signal)
 	var bars := clampi(roundi(strength * 8.0), 0, 8)
 	_meter_label.text = "SIGNAL [%s%s]" % ["|".repeat(bars), ".".repeat(8 - bars)]
 	_update_transcript(delta)
@@ -172,21 +207,34 @@ func _tune_held(delta: float) -> void:
 		return
 	_held += delta
 	if _held > SWEEP_DELAY:
-		_sweep += delta * SWEEP_RATE
+		# Faster the longer it's held, as a dial spun harder.
+		var ramp := clampf((_held - SWEEP_DELAY) / SWEEP_RAMP, 0.0, 1.0)
+		_sweep += delta * lerpf(SWEEP_RATE, SWEEP_MAX, ramp * ramp)
 		while _sweep >= 1.0:
 			_sweep -= 1.0
 			_step(direction)
 
 
+## One step of the dial (a whole MHz with Shift held).
 func _step(direction: int) -> void:
+	Radio.set_scanning(false) # a hand on the dial stops the scan
 	var before := Radio.frequency
-	Radio.tune(Radio.frequency + direction * Radio.FREQUENCY_STEP)
-	if Radio.frequency != before:
+	var steps := COARSE_STEPS if Input.is_key_pressed(KEY_SHIFT) else 1
+	Radio.tune(Radio.frequency + direction * steps * Radio.FREQUENCY_STEP)
+	if Radio.frequency != before and _time - _clicked > 0.04:
+		_clicked = _time
 		Sound.play_ui("keypad_press", -20.0, 1.8)
 
 
-## Left/Right belong to the dial while it has focus, not to focus navigation.
+## Left/Right belong to the dial while it has focus, not to focus navigation. The mouse
+## wheel turns it too.
 func _on_dial_input(event: InputEvent) -> void:
+	var wheel := event as InputEventMouseButton
+	if wheel and wheel.pressed and wheel.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+		if Radio.powered:
+			_step(1 if wheel.button_index == MOUSE_BUTTON_WHEEL_UP else -1)
+		dial.accept_event()
+		return
 	for action in ["ui_left", "ui_right", "move_left", "move_right"]:
 		if event.is_action(action):
 			dial.accept_event()
@@ -204,12 +252,14 @@ func _update_transcript(delta: float) -> void:
 		_transcript.text = text.left(int(_typed))
 		return
 	_shown_station = null
-	if Radio.on_home_channel():
-		_transcript.text = "Hold [V] to talk, or write a message below."
+	if Radio.partner_signal >= Radio.LOCK_STRENGTH:
+		_transcript.text = "SOMEONE IS ON THE AIR HERE."
+	elif Radio.partner_signal > 0.0:
+		_transcript.text = "A TRANSMISSION, OFF TUNE. FINE-TUNE."
 	elif station and Radio.station_strength > 0.15:
 		_transcript.text = "SIGNAL DETECTED. FINE-TUNE."
 	else:
-		_transcript.text = ""
+		_transcript.text = "Hold [V] to talk, [B] to ping, or write a message below."
 
 
 func _update_messages() -> void:
@@ -224,7 +274,7 @@ func _update_messages() -> void:
 
 
 ## A scale that scrolls under a fixed needle: ticks every 0.2 MHz, numbers every 1 MHz,
-## the partner channel marked CH, and the whole band as a thin bar along the bottom.
+## the frequency in memory marked MEM, and the whole band as a thin bar along the bottom.
 func _draw_dial() -> void:
 	var area := dial.size
 	var font := dial.get_theme_font("font", "Label")
@@ -252,9 +302,9 @@ func _draw_dial() -> void:
 		if major and x > 16.0 and x < area.x - 16.0:
 			var text := "%d" % roundi(f)
 			dial.draw_string(font, Vector2(x - 12, 58), text, HORIZONTAL_ALIGNMENT_CENTER, 24, 12, dim.lightened(0.4))
-	var home_x := center + (Radio.HOME_FREQUENCY - Radio.frequency) * per_mhz
-	if home_x > 0.0 and home_x < area.x:
-		dial.draw_string(font, Vector2(home_x - 12, 14), "CH", HORIZONTAL_ALIGNMENT_CENTER, 24, 12, PlayerHud.RADIO_COLOR)
+	var home_x := center + (Radio.channel - Radio.frequency) * per_mhz
+	if Radio.channel_known and home_x > 0.0 and home_x < area.x:
+		dial.draw_string(font, Vector2(home_x - 16, 14), "MEM", HORIZONTAL_ALIGNMENT_CENTER, 32, 12, PlayerHud.RADIO_COLOR)
 	dial.draw_line(Vector2(center, 4), Vector2(center, 50), Color(1.0, 0.35, 0.3), 2.0)
 	var band := (Radio.frequency - Radio.MIN_FREQUENCY) / (Radio.MAX_FREQUENCY - Radio.MIN_FREQUENCY)
 	dial.draw_line(Vector2(8, area.y - 8), Vector2(area.x - 8, area.y - 8), dim, 1.0)
@@ -263,8 +313,8 @@ func _draw_dial() -> void:
 		dial.draw_rect(Rect2(Vector2.ZERO, area), dim.lightened(0.2), false, 1.0)
 
 
-## The trace: the station's shape grows out of the noise as it is tuned in. On the partner
-## channel the line is flat, and moves while the partner talks.
+## The trace: the station's shape grows out of the noise as it is tuned in. On the frequency
+## in memory the line is flat (squelched), and moves while anyone is on the air.
 func _draw_scope() -> void:
 	var area := _scope.size
 	_scope.draw_rect(Rect2(Vector2.ZERO, area), UiStyle.panel)
@@ -277,9 +327,10 @@ func _draw_scope() -> void:
 	var strength := Radio.station_strength
 	var shape := Radio.station.shape if Radio.station else ""
 	var noise := 0.0 if Radio.on_home_channel() else (1.0 - strength) * 0.7
-	if Radio.on_home_channel() and Radio.receiving:
+	if Radio.partner_signal > 0.0:
 		shape = "voice"
-		strength = 0.8
+		strength = Radio.partner_signal * 0.8
+		noise = (1.0 - Radio.partner_signal) * 0.5
 	var points := PackedVector2Array()
 	for x in range(0, int(area.x), 3):
 		var t := x / area.x
@@ -297,7 +348,7 @@ func _draw_scope() -> void:
 
 
 ## The handheld's tuner: the whole band as one row of LCD segments, lit up to where it is
-## tuned, a pointer under it, the partner channel marked. No scrolling scale.
+## tuned, a pointer under it, the frequency in memory marked. No scrolling scale.
 func _draw_band(area: Vector2, font: Font) -> void:
 	var accent := UiStyle.accent
 	var segments := 80
@@ -309,8 +360,9 @@ func _draw_band(area: Vector2, font: Font) -> void:
 		dial.draw_rect(rect, accent if lit else UiStyle.dim.darkened(0.4))
 	var pointer := 12 + at * (area.x - 24.0)
 	dial.draw_colored_polygon(PackedVector2Array([Vector2(pointer, 40), Vector2(pointer - 6, 50), Vector2(pointer + 6, 50)]), accent)
-	var home := 12 + (Radio.HOME_FREQUENCY - Radio.MIN_FREQUENCY) / (Radio.MAX_FREQUENCY - Radio.MIN_FREQUENCY) * (area.x - 24.0)
-	dial.draw_string(font, Vector2(home - 12, 66), "CH", HORIZONTAL_ALIGNMENT_CENTER, 24, 12, PlayerHud.RADIO_COLOR)
+	var home := 12 + (Radio.channel - Radio.MIN_FREQUENCY) / (Radio.MAX_FREQUENCY - Radio.MIN_FREQUENCY) * (area.x - 24.0)
+	if Radio.channel_known:
+		dial.draw_string(font, Vector2(home - 16, 66), "MEM", HORIZONTAL_ALIGNMENT_CENTER, 32, 12, PlayerHud.RADIO_COLOR)
 	for mhz in [100, 120, 140, 160, 180]:
 		var x := 12 + float(mhz - Radio.MIN_FREQUENCY) / (Radio.MAX_FREQUENCY - Radio.MIN_FREQUENCY) * (area.x - 24.0)
 		dial.draw_string(font, Vector2(x - 16, 10), str(mhz), HORIZONTAL_ALIGNMENT_CENTER, 32, 10, UiStyle.dim.lightened(0.5))
@@ -319,16 +371,18 @@ func _draw_band(area: Vector2, font: Font) -> void:
 
 
 ## The handheld's signal meter: a bar graph, each bar stepped into segments. A station rises
-## out of the hiss in a shape of its own; on the partner channel it's still until they talk.
+## out of the hiss in a shape of its own; on the frequency in memory it's still until
+## someone is on the air.
 func _draw_meter(area: Vector2) -> void:
 	var bars := 32
 	var width := area.x / bars
 	var strength := Radio.station_strength
 	var shape := Radio.station.shape if Radio.station else ""
 	var noise := 0.0 if Radio.on_home_channel() else (1.0 - strength) * 0.8
-	if Radio.on_home_channel() and Radio.receiving:
+	if Radio.partner_signal > 0.0:
 		shape = "voice"
-		strength = 0.8
+		strength = Radio.partner_signal * 0.8
+		noise = (1.0 - Radio.partner_signal) * 0.6
 	for i in bars:
 		var t := float(i) / bars
 		var wave := 0.0

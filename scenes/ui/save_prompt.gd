@@ -18,7 +18,7 @@ uniform float power = 1.0;
 uniform vec3 flash = vec3(0.7, 1.0, 0.75);
 void fragment() {
 	vec2 c = SCREEN_UV - 0.5;
-	c *= 1.0 + 0.32 * dot(c, c);
+	c *= 1.0 + 0.32 * dot(c, c); // CURVE: keep in step with through_glass
 	vec2 uv = c + 0.5;
 	if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
 		COLOR = vec4(0.0, 0.0, 0.0, 1.0);
@@ -35,6 +35,9 @@ void fragment() {
 	}
 }
 """
+
+## The CRT's curvature (CRT's `0.32`): a point on the glass shows what's under this far out.
+const CURVE := 0.32
 
 var player: Player
 var terminal: SaveTerminal
@@ -120,8 +123,34 @@ func close(leave_focus := true) -> void:
 		player.leave_focus(terminal)
 
 
+## Where the pointer really is on a screen under the curved glass: the CRT shader shows each
+## point of the glass what lies a little further out (see CRT), so a mouse event at `at`
+## is about the interface at the returned point. `size`: the screen's size.
+static func through_glass(at: Vector2, size: Vector2) -> Vector2:
+	var c := at / size - Vector2(0.5, 0.5)
+	c *= 1.0 + CURVE * c.dot(c)
+	return (c + Vector2(0.5, 0.5)) * size
+
+
+## For a screen under the glass (this, the terminal): a mouse event is handled again where
+## the pointer really points, and true is returned for the original, which goes no further.
+static func bend_mouse(node: Control, event: InputEvent) -> bool:
+	if not event is InputEventMouse or event.has_meta("through_glass"):
+		return false
+	var viewport := node.get_viewport()
+	var bent: InputEventMouse = event.duplicate()
+	bent.position = through_glass(event.position, viewport.get_visible_rect().size)
+	bent.global_position = bent.position
+	bent.set_meta("through_glass", true)
+	viewport.set_input_as_handled()
+	viewport.push_input(bent, true)
+	return true
+
+
 func _input(event: InputEvent) -> void:
 	if not visible or _done:
+		return
+	if bend_mouse(self, event):
 		return
 	if event.is_action_pressed("inventory") or event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()

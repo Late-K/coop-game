@@ -342,6 +342,31 @@ def door():
     return crush(normalize(out, 0.7), bits=10)
 
 
+def crush_slam():
+    """The entrance doors coming down: one enormous metal impact, a low boom under it, a
+    short crunch, then the ring of the door dying away. Nothing after."""
+    n = length(2.6)
+    impact = bandpass(metal(length(2.4), [61, 97, 143, 211, 318, 477], 1.1, seed=30), 50, 2500)
+    boom = mul(tone(lambda t: 38 + 60 * math.exp(-t / 0.05), length(1.4)), envelope(length(1.4), 0.002, 0.5))
+    crunch_n = length(0.25)
+    crunch = mul(bandpass(noise(crunch_n, 31), 300, 2500), envelope(crunch_n, 0.002, 0.06))
+    out = mix(n, gain(impact, 1.2), gain(boom, 1.4), (gain(crunch, 0.7), 0.01))
+    return crush(normalize(out, 0.95), bits=9)
+
+
+def spin_up():
+    """A big machine catching through a wall: a deep hum winding up from nothing to a steady
+    drone, a turbine whine riding on top, a few clanks as it settles."""
+    n = length(5.0)
+    wind = lambda t: min(1.0, t / 3.5) ** 1.6
+    hum = mul(tone(lambda t: 30 + 35 * wind(t), n), [wind(i / SR) for i in range(n)])
+    whine = mul(lowpass(tone(lambda t: 120 + 520 * wind(t), n, "saw"), 1800), [0.25 * wind(i / SR) for i in range(n)])
+    clank = bandpass(metal(length(0.6), [180, 310, 520, 790], 0.3, seed=33), 150, 2500)
+    out = mix(n, gain(hum, 1.2), whine, (gain(clank, 0.5), 0.6), (gain(clank, 0.35), 2.1), (gain(clank, 0.25), 3.6))
+    tail = [1.0 if i < length(4.2) else max(0.0, 1.0 - (i - length(4.2)) / length(0.8)) for i in range(n)]
+    return crush(normalize(mul(lowpass(out, 2400), tail), 0.85), bits=10)
+
+
 def tube(arriving):
     n = length(1.2)
     sweep = (lambda t: 3000 - 2600 * t / 1.0) if arriving else (lambda t: 300 + 2700 * t / 1.0)
@@ -355,6 +380,14 @@ def blip_pair(f1, f2):
     a = mul(lowpass(tone(f1, n1, "square"), 3500), envelope(n1, 0.002, None, 0.01))
     b = mul(lowpass(tone(f2, n1, "square"), 3500), envelope(n1, 0.002, None, 0.01))
     return crush(normalize(a + b, 0.45), bits=8)
+
+
+def radar_ping():
+    """A radar return: a soft sine ping that rings out, a little detuned echo behind it."""
+    n = length(0.9)
+    ring = mul(tone(lambda t: 1180 - 60 * t, n), envelope(n, 0.003, 0.25))
+    echo = mul(tone(1174, n), [0.0] * length(0.12) + envelope(n - length(0.12), 0.003, 0.2))
+    return crush(normalize(mix(n, ring, gain(echo, 0.35)), 0.5), bits=10)
 
 
 def keypad_press():
@@ -537,10 +570,13 @@ SOUNDS = {
     "gun_empty": (click, False),
     "reload": (reload, False),
     "door": (door, False),
+    "crush": (crush_slam, False),
+    "spin_up": (spin_up, False),
     "tube_send": (lambda: tube(False), False),
     "tube_arrive": (lambda: tube(True), False),
     "pickup": (lambda: blip_pair(660, 990), False),
     "keypad_press": (keypad_press, False),
+    "radar_ping": (radar_ping, False),
     "code_wrong": (code_wrong, False),
     "code_right": (code_right, False),
     "lights_on": (lights_on, False),

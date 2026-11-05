@@ -8,7 +8,8 @@ extends Node
 ## the lobby and starts at once; roles then go to whoever is free (`--role=visitor`
 ## picks one for the host).
 
-const CHAPTER_1_PATH := "res://scenes/levels/chapter_1.tscn"
+## Chapter 1, "Intake" (built by tools/build_intake.gd).
+const CHAPTER_1_PATH := "res://scenes/levels/intake.tscn"
 const TEST_LEVEL_PATH := "res://scenes/levels/test_level.tscn"
 const KIT_SAMPLE_PATH := "res://scenes/levels/kit_sample.tscn"
 const MENU_AMBIENCE := "amb_lab"

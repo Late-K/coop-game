@@ -1,0 +1,109 @@
+[gd_scene format=3]
+
+[ext_resource type="Material" path="res://kit/materials/tissue.tres" id="m1"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_1"]
+radius = 0.45
+height = 0.225
+radial_segments = 8
+rings = 4
+
+[sub_resource type="SphereMesh" id="SphereMesh_2"]
+radius = 0.3
+height = 0.18
+radial_segments = 8
+rings = 4
+
+[sub_resource type="SphereMesh" id="SphereMesh_3"]
+radius = 0.25
+height = 0.175
+radial_segments = 8
+rings = 4
+
+[sub_resource type="SphereMesh" id="SphereMesh_4"]
+radius = 0.2
+height = 0.16000000000000003
+radial_segments = 8
+rings = 4
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_5"]
+top_radius = 0.035
+bottom_radius = 0.035
+height = 1.1
+radial_segments = 5
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_6"]
+top_radius = 0.035
+bottom_radius = 0.035
+height = 0.9
+radial_segments = 5
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_7"]
+top_radius = 0.035
+bottom_radius = 0.035
+height = 1.2
+radial_segments = 5
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_8"]
+top_radius = 0.035
+bottom_radius = 0.035
+height = 0.8
+radial_segments = 5
+rings = 1
+
+[node name="Growth" type="Node3D"]
+
+[node name="Lump0" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+mesh = SubResource("SphereMesh_1")
+surface_material_override/0 = ExtResource("m1")
+
+[node name="Lump1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.45, 0.04, 0.25)
+mesh = SubResource("SphereMesh_2")
+surface_material_override/0 = ExtResource("m1")
+
+[node name="Lump2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4, 0.03, 0.3)
+mesh = SubResource("SphereMesh_3")
+surface_material_override/0 = ExtResource("m1")
+
+[node name="Lump3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.15, 0.03, -0.45)
+mesh = SubResource("SphereMesh_4")
+surface_material_override/0 = ExtResource("m1")
+
+[node name="Vein0" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.955, 0, -0.296, 0, 1, 0, 0.296, 0, 0.955, 0.5254350690190833, 0.02, -0.16253611366373677)
+
+[node name="VeinMesh0" type="MeshInstance3D" parent="Vein0"]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("CylinderMesh_5")
+surface_material_override/0 = ExtResource("m1")
+
+[node name="Vein1" type="MeshInstance3D" parent="."]
+transform = Transform3D(-0.505, 0, -0.863, 0, 1, 0, 0.863, 0, -0.505, -0.2271807470699359, 0.02, -0.38844421499199316)
+
+[node name="VeinMesh1" type="MeshInstance3D" parent="Vein1"]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("CylinderMesh_6")
+surface_material_override/0 = ExtResource("m1")
+
+[node name="Vein2" type="MeshInstance3D" parent="."]
+transform = Transform3D(-0.897, 0, 0.443, 0, 1, 0, -0.443, 0, -0.897, -0.5380550498004881, 0.02, 0.26551226597691147)
+
+[node name="VeinMesh2" type="MeshInstance3D" parent="Vein2"]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("CylinderMesh_7")
+surface_material_override/0 = ExtResource("m1")
+
+[node name="Vein3" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.284, 0, 0.959, 0, 1, 0, -0.959, 0, 0.284, 0.1134648741852905, 0.02, 0.3835697098652554)
+
+[node name="VeinMesh3" type="MeshInstance3D" parent="Vein3"]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("CylinderMesh_8")
+surface_material_override/0 = ExtResource("m1")

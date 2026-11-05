@@ -4,9 +4,12 @@ extends Interactable
 ## inventory slot to the partner tube, where it arrives as a pickup on the tray
 ## beside it. The tray sits to the side on purpose: a pickup lying right in front
 ## would be nearer than the tube and steal the interact key from it.
-## Later: the noise could attract enemies, making every send a decision.
+## Sending is loud at both ends (TUBE_NOISE): husks come to the clatter, so every send is a
+## decision (docs/design.md, Sharing).
 
 const TRANSIT_TIME := 4.0
+## How far the canister's clatter carries to enemies, at the sending end and at arrival.
+const TUBE_NOISE := 12.0
 const PICKUP_SCENE := "res://scenes/items/pickup.tscn"
 
 @export var partner: ItemTube
@@ -38,12 +41,14 @@ func request_send(id: String, count: int) -> void:
 	if not multiplayer.is_server() or not Items.exists(id) or count <= 0:
 		return
 	_pulse.rpc(false)
+	Enemy.make_noise(get_tree(), global_position, TUBE_NOISE)
 	# Connected to a method (not awaited) so it is dropped if the level is unloaded meanwhile.
 	get_tree().create_timer(TRANSIT_TIME).timeout.connect(_arrive.bind(id, count))
 
 
 func _arrive(id: String, count: int) -> void:
 	partner._pulse.rpc(true)
+	Enemy.make_noise(get_tree(), partner.global_position, TUBE_NOISE)
 	var level := get_tree().get_first_node_in_group("level") as Level
 	level.spawn_world_object(PICKUP_SCENE, partner.output.global_transform, {"item_id": id, "count": count})
 

@@ -1,10 +1,10 @@
 [gd_resource type="StandardMaterial3D" format=3]
 
 [ext_resource type="Texture2D" path="res://textures/snow.png" id="1_k5fsy"]
-[ext_resource type="Texture2D" path="res://textures/wall_concrete.png" id="2_wqrt1"]
+[ext_resource type="Texture2D" path="res://textures/ice_face.png" id="2_wqrt1"]
 
 [resource]
-albedo_color = Color(0.72, 0.8, 0.9, 1)
+albedo_color = Color(0.85, 0.9, 0.95, 1)
 albedo_texture = ExtResource("1_k5fsy")
 uv1_scale = Vector3(0.5, 0.5, 0.5)
 uv1_triplanar = true

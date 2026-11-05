@@ -1,0 +1,47 @@
+[gd_scene format=3]
+
+[ext_resource type="Material" path="res://kit/materials/wood.tres" id="m1"]
+[ext_resource type="Material" path="res://kit/materials/wood_dark.tres" id="m2"]
+[ext_resource type="Material" path="res://kit/materials/metal_dark.tres" id="m3"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_1"]
+size = Vector3(1.6, 0.5, 0.45)
+
+[sub_resource type="BoxMesh" id="BoxMesh_2"]
+size = Vector3(1.6, 0.06, 0.42)
+
+[sub_resource type="BoxMesh" id="BoxMesh_3"]
+size = Vector3(1.6, 0.02, 0.06)
+
+[sub_resource type="BoxMesh" id="BoxMesh_4"]
+size = Vector3(0.06, 0.44, 0.38)
+
+[sub_resource type="BoxMesh" id="BoxMesh_5"]
+size = Vector3(0.06, 0.44, 0.38)
+
+[node name="Bench" type="StaticBody3D"]
+input_ray_pickable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
+shape = SubResource("BoxShape3D_1")
+
+[node name="Seat" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.46, 0)
+mesh = SubResource("BoxMesh_2")
+surface_material_override/0 = ExtResource("m1")
+
+[node name="Slat" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0.12)
+mesh = SubResource("BoxMesh_3")
+surface_material_override/0 = ExtResource("m2")
+
+[node name="Leg0" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.7, 0.22, 0)
+mesh = SubResource("BoxMesh_4")
+surface_material_override/0 = ExtResource("m3")
+
+[node name="Leg1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7, 0.22, 0)
+mesh = SubResource("BoxMesh_5")
+surface_material_override/0 = ExtResource("m3")

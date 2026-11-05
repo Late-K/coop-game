@@ -23,6 +23,60 @@
 		"if": "skipper",
 		"text": "Welcome back. You have skipped {skipped} of my lines so far. I count them. Counting is very nearly the only thing I enjoy."
 	},
+	"intake_complete": {
+		"speaker": "ZP-SYS",
+		"keep": true,
+		"subject": "Outer door cycled. Perimeter contact lost. Intake complete. The occupant register has been updated."
+	},
+	"calibration_done": {
+		"speaker": "ZP-SYS",
+		"keep": true,
+		"subject": "Calibration complete. Occupant behaved as predicted. Please proceed to the next chamber. Please disregard the wall."
+	},
+	"body_found": {
+		"keep": true,
+		"subject": "Someone from outside. An orange jacket, snow still in the seams, the doors come down across the legs. Not one of the facility's. Whoever they were, they almost made it in."
+	},
+	"records_warning": {
+		"speaker": "ZP-SYS",
+		"keep": true,
+		"subject": "Acoustic unit active in Records. Intake 2 is approaching it. Radio silence is recommended. Silence is always recommended.",
+		"visitor": "Acoustic unit active in Records. Radios are not permitted beyond the door. The unit will find them. That is what it is for."
+	},
+	"chamber02_done": {
+		"speaker": "ZP-SYS",
+		"keep": true,
+		"subject": "Release accepted. You heard it. Most occupants do not, the first time. Most occupants do not get a second time."
+	},
+	"plant_online": {
+		"speaker": "ZP-SYS",
+		"keep": true,
+		"subject": "Generator 4 online. Sector 4 power restored. Thank you, occupant. The facility is warmer now. That was not for you.",
+		"visitor": "Breakers closed. Sector 4 power restored. Heating, lighting and doors will return by section. Somewhere close, something large has started to turn."
+	},
+	"power_returning": {
+		"speaker": "ZP-SYS",
+		"keep": true,
+		"subject": "Power is returning to sector 4 by section. Doors that were dead will open. Things that were dead may also open. Please carry on.",
+		"visitor": "Heating restored. Lighting restored by section. Sealed doors in this sector will now open. The way down is open. The way up is not."
+	},
+	"went_down_subject": {
+		"keep": true,
+		"subject": "The lift drops for a long time. It stops twice, at floors with no buttons. Then the cable lets go."
+	},
+	"went_down_visitor": {
+		"keep": true,
+		"visitor": "The stairs go down further than the building is tall. Somewhere above, very close, a lift goes by."
+	},
+	"plant_vented": {
+		"speaker": "ZP-SYS",
+		"text": "Pressure vented. Restart sequence aborted. Begin again."
+	},
+	"released": {
+		"speaker": "ZP-SYS",
+		"keep": true,
+		"visitor": "Release code accepted. Intake 2, you are cleared to proceed. Please do not touch anything you do not recognise. Please recognise as little as possible."
+	},
 	"airlock_sealed": {
 		"speaker": "ZP-SYS",
 		"visitor": "Outer door sealed. Welcome to Zero Point. The temperature inside is also lethal, but more slowly. Please proceed to decontamination. Decontamination is unavailable. Please proceed anyway."

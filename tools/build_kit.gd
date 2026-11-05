@@ -20,12 +20,24 @@ const ITEMS := {
 	2: ["floor_concrete", "floor", "floor_concrete"],
 	3: ["floor_hazard", "floor", "floor_hazard"],
 	4: ["floor_snow", "floor", "snow"],
+	# Area sets: chambers (the Subject), offices (the Visitor), safe rooms (shared).
+	5: ["floor_chamber", "floor", "floor_chamber"],
+	6: ["floor_carpet", "floor", "floor_carpet"],
+	7: ["floor_linoleum", "floor", "floor_linoleum"],
+	8: ["floor_safe", "floor", "floor_safe"],
 	10: ["wall_panel", "wall", "wall_panel"],
 	11: ["wall_concrete", "wall", "wall_concrete"],
 	12: ["wall_lab", "wall", "wall_lab"],
 	13: ["wall_ice", "wall", "wall_ice"],
+	14: ["wall_chamber", "wall", "wall_chamber"],
+	15: ["wall_chamber_decayed", "wall", "wall_chamber_decayed"],
+	16: ["wall_office", "wall", "wall_office"],
+	17: ["wall_machinery", "wall", "wall_machinery"],
+	18: ["wall_safe", "wall", "wall_safe"],
 	20: ["low_concrete", "low", "low_concrete"],
 	21: ["low_panel", "low", "low_panel"],
+	22: ["low_chamber", "low", "low_chamber"],
+	23: ["low_office", "low", "low_office"],
 }
 
 
@@ -75,18 +87,20 @@ func _build_environments() -> void:
 	facility.adjustment_saturation = 0.85
 	ResourceSaver.save(facility, "res://kit/facility_environment.tres")
 
+	# A blizzard: an arm's length of ground, then nothing but white. Lit lamps (which ignore
+	# fog) are the only thing that carries.
 	var whiteout := Environment.new()
 	whiteout.background_mode = Environment.BG_COLOR
-	whiteout.background_color = Color(0.45, 0.5, 0.56)
+	whiteout.background_color = Color(0.62, 0.66, 0.71)
 	whiteout.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	whiteout.ambient_light_color = Color(0.6, 0.65, 0.72)
-	whiteout.ambient_light_energy = 0.6
+	whiteout.ambient_light_color = Color(0.62, 0.67, 0.74)
+	whiteout.ambient_light_energy = 0.55
 	whiteout.fog_enabled = true
 	whiteout.fog_mode = Environment.FOG_MODE_DEPTH
-	whiteout.fog_light_color = Color(0.45, 0.5, 0.56)
+	whiteout.fog_light_color = Color(0.62, 0.66, 0.71)
 	whiteout.fog_density = 1.0
-	whiteout.fog_depth_begin = 17.0
-	whiteout.fog_depth_end = 25.0
+	whiteout.fog_depth_begin = 1.0
+	whiteout.fog_depth_end = 7.0
 	ResourceSaver.save(whiteout, "res://kit/whiteout_environment.tres")
 	print("kit: environments -> res://kit/")
 
@@ -121,9 +135,20 @@ func _build_materials() -> Dictionary:
 		"wall_panel": ["wall_panel", "wall_panel", 0.5, true, Color(0.9, 0.9, 0.9)],
 		"wall_concrete": ["wall_concrete", "wall_concrete", 0.5, true, Color(0.9, 0.9, 0.9)],
 		"wall_lab": ["wall_lab", "wall_lab", 0.5, true, Color(0.9, 0.9, 0.9)],
-		"wall_ice": ["snow", "wall_concrete", 0.5, false, Color(0.72, 0.8, 0.9)],
+		"wall_ice": ["snow", "ice_face", 0.5, false, Color(0.85, 0.9, 0.95)],
 		"low_concrete": ["floor_concrete", "wall_concrete", 0.5, false, Color(0.85, 0.85, 0.85)],
 		"low_panel": ["floor_grate", "wall_panel", 0.5, false, Color(0.85, 0.85, 0.85)],
+		"floor_chamber": ["floor_chamber", "", 0.5, false, Color(0.9, 0.9, 0.9)],
+		"floor_carpet": ["floor_carpet", "", 0.5, false, Color.WHITE],
+		"floor_linoleum": ["floor_linoleum", "", 0.5, false, Color.WHITE],
+		"floor_safe": ["floor_safe", "", 0.5, false, Color.WHITE],
+		"wall_chamber": ["wall_chamber", "wall_chamber", 0.5, true, Color(0.92, 0.92, 0.92)],
+		"wall_chamber_decayed": ["wall_chamber_decayed", "wall_chamber_decayed", 1.0 / 6.0, true, Color(0.9, 0.9, 0.9)], # 6 m wide
+		"wall_office": ["wall_office", "wall_office", 0.5, true, Color(0.9, 0.9, 0.9)],
+		"wall_machinery": ["wall_machinery", "wall_machinery", 0.5, true, Color(0.9, 0.9, 0.9)],
+		"wall_safe": ["wall_safe", "wall_safe", 0.5, true, Color(0.92, 0.92, 0.92)],
+		"low_chamber": ["floor_chamber", "wall_chamber", 0.5, false, Color(0.9, 0.9, 0.9)],
+		"low_office": ["floor_carpet", "wall_office", 0.5, false, Color(0.85, 0.85, 0.85)],
 	}
 	for material_name: String in surfaces:
 		var spec: Array = surfaces[material_name]
@@ -148,6 +173,14 @@ func _build_materials() -> Dictionary:
 		"paint_red": [Color(0.42, 0.13, 0.1), 0.1],
 		"rust": [Color(0.3, 0.18, 0.12), 0.2],
 		"wood": [Color(0.34, 0.25, 0.17), 0.0],
+		# Area props: chamber white, grown tissue, office wood and fabric, safe room colours.
+		"panel_white": [Color(0.78, 0.8, 0.79), 0.0],
+		"tissue": [Color(0.5, 0.18, 0.2), 0.0],
+		"wood_dark": [Color(0.24, 0.15, 0.09), 0.0],
+		"fabric": [Color(0.3, 0.26, 0.24), 0.0],
+		"paint_cream": [Color(0.72, 0.66, 0.52), 0.0],
+		"paint_green": [Color(0.17, 0.32, 0.26), 0.1],
+		"plant_dead": [Color(0.32, 0.28, 0.16), 0.0],
 	}
 	for material_name: String in plain:
 		var material := StandardMaterial3D.new()
@@ -161,6 +194,18 @@ func _build_materials() -> Dictionary:
 	screen.emission = Color(0.45, 0.95, 0.82)
 	screen.emission_energy_multiplier = 1.2
 	made["screen"] = _save(screen, "screen")
+	# Glowing fixtures: a chamber's cold strip light, a safe room's warm radiator and lamp.
+	var glows := {
+		"glow_cold": [Color(0.85, 0.92, 1.0), 2.2],
+		"glow_warm": [Color(1.0, 0.62, 0.3), 1.6],
+	}
+	for material_name: String in glows:
+		var glow := StandardMaterial3D.new()
+		glow.albedo_color = glows[material_name][0]
+		glow.emission_enabled = true
+		glow.emission = glows[material_name][0]
+		glow.emission_energy_multiplier = glows[material_name][1]
+		made[material_name] = _save(glow, material_name)
 	return made
 
 

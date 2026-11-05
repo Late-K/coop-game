@@ -1,0 +1,12 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[ext_resource type="Texture2D" path="res://textures/wall_chamber_decayed.png" id="1_40ms7"]
+
+[resource]
+albedo_color = Color(0.9, 0.9, 0.9, 1)
+albedo_texture = ExtResource("1_40ms7")
+uv1_scale = Vector3(0.16666667, 0.16666667, 0.16666667)
+uv1_triplanar = true
+uv1_world_triplanar = true
+metadata/retro_wall_texture = ExtResource("1_40ms7")
+metadata/retro_black_tops = true

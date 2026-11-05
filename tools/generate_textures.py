@@ -216,6 +216,219 @@ def snow():
     write_png("snow", size, size, pixel)
 
 
+# --- Area sets -------------------------------------------------------------------------
+# Each area reads differently at a glance: the Subject's test chambers (clinical white
+# panels, decaying), the machinery behind them (dark riveted steel), the Visitor's offices
+# (warm carpet, wallpaper, wood), and the safe rooms, the one look both share.
+
+def wall_chamber():
+    """Test chamber wall: off-white square panels (1 m) with thin dark seams, a recessed dark
+    band at the foot, faint per-panel tone so the grid reads."""
+    width, height = 32, 40
+    rng = random.Random(20)
+    white = (206, 210, 208)
+    tone = {(px, py): rng.uniform(0.93, 1.03) for px in range(2) for py in range(3)}
+
+    def pixel(x, y):
+        if y >= 37:
+            return shade((34, 36, 38), rng.uniform(0.9, 1.1))  # recessed base channel
+        if x % 16 == 0 or y % 16 == 0 or y == 36:
+            return (62, 64, 66)  # seam
+        if x % 16 == 1 or y % 16 == 1:
+            return shade(white, 1.05)  # panel edge catching light
+        k = tone[(x // 16, min(y // 16, 2))] * rng.uniform(0.985, 1.015)
+        return shade(white, k * (0.9 if y < 2 else 1.0))
+
+    write_png("wall_chamber", width, height, pixel)
+
+
+def wall_chamber_decayed():
+    """The same panels, years abandoned, over 6 m so the damage doesn't repeat every few
+    steps: water streaks, grime toward the floor, a cracked panel, one panel fallen away
+    (dark substrate and a strut), and tissue grown out of the gap across its neighbours."""
+    width, height = 96, 40
+    rng = random.Random(21)
+    white = (178, 180, 172)
+    streaks = {rng.randrange(width): rng.randint(8, 34) for _ in range(14)}
+    tissue = [(58 + rng.uniform(-6, 6), 26 + rng.uniform(-6, 5), rng.uniform(2.5, 6.0)) for _ in range(8)]
+    crack = {(10 + i, 4 + i + (i % 3 == 0)) for i in range(11)}
+
+    def pixel(x, y):
+        if y >= 37:
+            return shade((30, 30, 28), rng.uniform(0.85, 1.1))
+        missing = 48 <= x < 64 and 16 <= y < 32
+        grown = sum(max(0.0, 1.0 - ((x - tx) ** 2 + (y - ty) ** 2) ** 0.5 / r) for tx, ty, r in tissue)
+        if grown > 0.35:
+            vein = (x * 7 + y * 3) % 9 == 0
+            return shade((132, 52, 58) if not vein else (90, 26, 34), rng.uniform(0.85, 1.1) * min(1.2, 0.8 + grown * 0.3))
+        if missing:
+            if x in (55, 56):
+                return (58, 52, 46)  # strut behind the panel
+            return shade((22, 22, 24), rng.uniform(0.8, 1.2))
+        if x % 16 == 0 or y % 16 == 0 or y == 36:
+            return (54, 52, 50)
+        if (x, y) in crack:
+            return (70, 68, 64)
+        k = rng.uniform(0.95, 1.03) * (1.0 - 0.25 * max(0.0, (y - 20) / 16.0))
+        rgb = white
+        if x in streaks and y < streaks[x]:
+            rgb = (150, 138, 112)  # rust-brown water streak
+        return shade(rgb, k)
+
+    write_png("wall_chamber_decayed", width, height, pixel)
+
+
+def floor_chamber():
+    """Chamber floor: pale grey 1 m tiles, dark seams, scuffs where things were dragged."""
+    size = 32
+    rng = random.Random(22)
+    base = (176, 180, 180)
+    tone = {(tx, ty): rng.uniform(0.92, 1.03) for tx in range(2) for ty in range(2)}
+
+    def pixel(x, y):
+        if x % 16 == 0 or y % 16 == 0:
+            return (70, 72, 74)
+        k = tone[(x // 16, y // 16)] * rng.uniform(0.98, 1.02)
+        if 6 <= y <= 7 and 3 < x < 27 and rng.random() < 0.6:
+            k *= 0.88  # a drag mark
+        return shade(base, k)
+
+    write_png("floor_chamber", size, size, pixel)
+
+
+def wall_machinery():
+    """Behind the panels: dark riveted steel plates, rust bleeding from the seams and rivets."""
+    width, height = 32, 40
+    rng = random.Random(23)
+    steel = (58, 62, 64)
+
+    def pixel(x, y):
+        lx, ly = x % 16, y % 20
+        if lx == 0 or ly == 0:
+            return (24, 24, 26)
+        if lx in (2, 13) and ly in (2, 17):
+            return (110, 110, 104)  # rivet
+        k = rng.uniform(0.9, 1.08)
+        rust = (lx in (2, 13) and 2 < ly < 2 + rng.randint(3, 10)) or (ly == 1 and rng.random() < 0.3)
+        return shade((96, 56, 34) if rust else steel, k)
+
+    write_png("wall_machinery", width, height, pixel)
+
+
+def floor_carpet():
+    """Office carpet: dull wine-brown with a small woven fleck, worn paler down a walked path."""
+    size = 32
+    rng = random.Random(24)
+    base = (92, 52, 46)
+
+    def pixel(x, y):
+        k = rng.uniform(0.88, 1.1)
+        if (x + 2 * y) % 5 == 0:
+            k *= 0.82  # weave
+        if 12 <= x <= 19:
+            k *= 1.12  # worn path
+        return shade(base, k)
+
+    write_png("floor_carpet", size, size, pixel)
+
+
+def floor_linoleum():
+    """Lab linoleum: beige and grey-green checks (0.5 m), scuffed and yellowed."""
+    size = 32
+    rng = random.Random(25)
+
+    def pixel(x, y):
+        light = ((x // 8) + (y // 8)) % 2 == 0
+        rgb = (176, 164, 132) if light else (104, 112, 98)
+        k = rng.uniform(0.94, 1.04) * (0.85 if rng.random() < 0.02 else 1.0)
+        return shade(rgb, k)
+
+    write_png("floor_linoleum", size, size, pixel)
+
+
+def wall_office():
+    """Office wall: pale green-cream wallpaper with a faint stripe above a dark wood wainscot
+    and a rail, damp stains near the top."""
+    width, height = 32, 40
+    rng = random.Random(26)
+    paper, wood = (168, 170, 136), (70, 46, 30)
+
+    def pixel(x, y):
+        if y in (23, 24):
+            return (110, 80, 54)  # rail
+        if y > 24:
+            k = rng.uniform(0.9, 1.08) * (0.8 if x % 8 == 0 else 1.0)
+            return shade(wood, k)
+        k = rng.uniform(0.96, 1.03) * (0.93 if x % 4 == 0 else 1.0)
+        if y < 6 and (x * 5 + y * 3) % 13 < 3:
+            k *= 0.85  # damp
+        return shade(paper, k * (0.85 if y < 2 else 1.0))
+
+    write_png("wall_office", width, height, pixel)
+
+
+def floor_safe():
+    """Safe room floor (the same everywhere): deep red rubber tiles inside a cream border line."""
+    size = 32
+    rng = random.Random(27)
+
+    def pixel(x, y):
+        if x % 16 == 0 or y % 16 == 0:
+            return (60, 22, 22)
+        if x % 16 == 2 or y % 16 == 2:
+            return (196, 176, 140)  # the painted border
+        return shade((128, 34, 32), rng.uniform(0.92, 1.06))
+
+    write_png("floor_safe", size, size, pixel)
+
+
+def wall_safe():
+    """Safe room wall (the same everywhere): dark green tiles to the rail, warm cream above,
+    one red stripe at eye height."""
+    width, height = 32, 40
+    rng = random.Random(28)
+
+    def pixel(x, y):
+        if y in (12, 13):
+            return (150, 40, 36)  # stripe
+        if y >= 22:
+            if x % 8 == 0 or y % 6 == 4:
+                return (22, 40, 34)
+            return shade((44, 82, 66), rng.uniform(0.92, 1.06))
+        if y == 21:
+            return (120, 98, 70)
+        return shade((198, 184, 150), rng.uniform(0.96, 1.03) * (0.85 if y < 2 else 1.0))
+
+    write_png("wall_safe", width, height, pixel)
+
+
+def ice_face():
+    """Outside: the face of a wind-packed ridge. Soft pale blue-white layers that wander,
+    blue shadow in the hollows, two thin cracks; brighter where snow settled on top."""
+    import math
+    width, height = 32, 40
+    rng = random.Random(29)
+    cracks = set()
+    for cx, cy in [(6, 12), (22, 22)]:
+        for i in range(9):
+            cracks.add((cx + i // 2, cy + i))
+
+    def pixel(x, y):
+        wave = 1.5 * math.sin(x * TAU16) + 0.8 * math.sin(x * TAU16 * 2.0 + 1.0)
+        layer = int((y + wave) // 7)
+        k = 0.86 + 0.06 * (layer % 3) + rng.uniform(-0.025, 0.025)
+        if y < 4:
+            k = 1.04 + rng.uniform(-0.02, 0.02)  # settled snow along the top
+        if (x, y) in cracks:
+            return (110, 126, 150)
+        return shade((176, 194, 216), k)
+
+    write_png("ice_face", width, height, pixel)
+
+
+TAU16 = 2 * 3.141592653589793 / 32
+
+
 # Item icons for the terminal inventory: 32 x 20 pixel art, drawn as text. Characters map to
 # colours below ('.' is transparent background, rendered as the terminal's black).
 ICON_COLORS = {
@@ -289,6 +502,28 @@ ICONS = {
         "................................",
         "................................",
     ],
+    "photograph": [
+        "................................",
+        "..........##############........",
+        "..........#++++++++++++#........",
+        "..........#+oooooooooo+#........",
+        "..........#+o.yy..yy.o+#........",
+        "..........#+o.yy..yy.o+#........",
+        "..........#+o.hh..oo.o+#........",
+        "..........#+o.hh..oo.o+#........",
+        "..........#+o.hh..oo.o+#........",
+        "..........#+o########o+#........",
+        "..........#+oooooooooo+#........",
+        "..........#++++++++++++#........",
+        "..........#++++++++++++#........",
+        "..........##############........",
+        "................................",
+        "................................",
+        "................................",
+        "................................",
+        "................................",
+        "................................",
+    ],
     "service_key": [
         "................................",
         "................................",
@@ -354,4 +589,14 @@ if __name__ == "__main__":
     wall_concrete()
     wall_lab()
     snow()
+    wall_chamber()
+    wall_chamber_decayed()
+    floor_chamber()
+    wall_machinery()
+    floor_carpet()
+    floor_linoleum()
+    wall_office()
+    floor_safe()
+    wall_safe()
+    ice_face()
     icons()

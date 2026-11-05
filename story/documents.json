@@ -12,5 +12,13 @@
 		"title": "SERVICE LOG, UNIT 7",
 		"subject": "Unit 7 recalibrated. Unit 7 recalibrated. Unit 7 recalibrated.\n\nThe same entry fills every page, in the same hand, at the same minute. The last page is stamped with your occupant number: {iteration}.",
 		"visitor": "Unit 7 keeps walking the east corridor after shutdown. We stopped logging it.\n\nWhoever reads this: it is not looking for a way out. It is looking for a way in.\n\nThe handwriting changes halfway down the page, and keeps going after the last line, off the edge of the paper."
+	},
+	"power_schematic": {
+		"title": "SECTOR 4 POWER: RESTART SEQUENCE",
+		"text": "The sector restarts from two places at once: the generator hall (behind the chamber wing) and breaker room B (this side). One person cannot do it. Do not try.\n\nThe generator is held at its restart lever while pressure builds. Its gauge has six bands. Each breaker is thrown as the gauge passes its band, in this order:\n\nB3, B1, B6, B2, B5, B4.\n\nThe breaker room cannot see the gauge. Whoever holds the lever will have to call it."
+	},
+	"duct_note": {
+		"title": "MAINTENANCE NOTICE (SECURITY)",
+		"text": "If the outer doors fail closed, nobody reaches the airlock from Intake. The inner door runs on sector power, and the sector has none.\n\nThe only way in is duct M-2, and it starts on the chamber side: the grey door in the south wall of the radar control room. Its key (MAINT-2) is kept here, with Security. Send it through.\n\nWhatever is in the airlock can wait. It always has."
 	}
 }

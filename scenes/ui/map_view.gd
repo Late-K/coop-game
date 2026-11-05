@@ -10,6 +10,7 @@ const PADDING := 28.0
 const SAVE_COLOR := Color(0.3, 1.0, 0.45)
 const KEY_COLOR := Color(1.0, 0.75, 0.3)
 const POWER_COLOR := Color(0.55, 0.55, 0.55)
+const ICE_COLOR := Color(0.6, 0.85, 1.0)
 
 var player: Player
 ## The floor on screen (MapRoom.floor). Reset to the player's own floor when the tab opens.
@@ -46,6 +47,8 @@ static func door_color(state: String) -> Color:
 			return Color(1.0, 0.95, 0.9) if UiStyle.visitor() else Color(1.0, 0.3, 0.25)
 		"power":
 			return POWER_COLOR
+		"iced":
+			return ICE_COLOR
 		"shut":
 			return UiStyle.dim.lightened(0.3)
 	return UiStyle.accent
@@ -140,13 +143,15 @@ func _draw() -> void:
 
 
 ## A door across the wall: a solid line when open, dim when shut; locked doors carry a key
-## mark, barred doors a cross, unpowered ones are dashed.
+## mark, barred doors a cross, unpowered ones are dashed, frozen ones dotted in ice blue.
 func _draw_door(from: Vector2, to: Vector2, state: String) -> void:
 	var color := door_color(state)
 	var mid := (from + to) / 2.0
 	match state:
 		"power":
 			draw_dashed_line(from, to, color, 3.0, 3.0)
+		"iced":
+			draw_dashed_line(from, to, color, 3.0, 1.5)
 		"barred":
 			draw_line(from, to, color, 3.0)
 			draw_line(mid - Vector2(5, 5), mid + Vector2(5, 5), color, 2.0)
@@ -171,7 +176,7 @@ func _draw_legend(font: Font) -> void:
 	draw_rect(Rect2(x, y - 8, 8, 8), SAVE_COLOR)
 	draw_string(font, Vector2(x + 14, y), "SAVE", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UiStyle.accent)
 	x += 56.0
-	for entry in [["open", "OPEN"], ["key", "LOCKED"], ["barred", "BARRED"], ["power", "NO POWER"]]:
+	for entry in [["open", "OPEN"], ["key", "LOCKED"], ["barred", "BARRED"], ["power", "NO POWER"], ["iced", "FROZEN"]]:
 		_draw_door(Vector2(x, y - 4), Vector2(x + 16, y - 4), entry[0])
 		draw_string(font, Vector2(x + 22, y), entry[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UiStyle.accent)
 		x += 30.0 + entry[1].length() * 8.0

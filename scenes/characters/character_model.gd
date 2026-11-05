@@ -39,6 +39,13 @@ const DEATH_TIME := 0.8
 @export var pose := Pose.LIVE
 ## Varies the corpse pose (which way it fell, where the limbs lie).
 @export var variation := 0
+## Render layers of every piece. Players use their own (Player.VISUAL_LAYER), so cameras
+## that must never show them (CCTV) can leave them out.
+@export_flags_3d_render var visual_layers := 1:
+	set(value):
+		visual_layers = value
+		for piece in find_children("*", "VisualInstance3D", true, false):
+			piece.layers = value
 
 ## Set by the owner every frame (the player, on every peer).
 var aiming := false
@@ -369,6 +376,7 @@ func _piece(parent: Node3D, size: Vector3, at: Vector3, material: Material) -> v
 	piece.mesh = box
 	piece.position = at
 	piece.material_override = material
+	piece.layers = visual_layers
 	parent.add_child(piece)
 
 

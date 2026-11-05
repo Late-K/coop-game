@@ -61,6 +61,9 @@ var _notice_time := 0.0
 var _built := false
 var _screen_panel: Control
 var _glass := ShaderMaterial.new()
+## The handheld's screen is cracked (the Visitor's opening; see Player.set_handheld_cracked).
+var cracked := false
+var _crack := CrackedGlass.new()
 var _clock := Label.new()
 var _signal := Label.new()
 ## The handheld's chest-strap pulse: one reading every PULSE_STEP seconds, the last minute.
@@ -152,6 +155,9 @@ func _build() -> void:
 	if tab_bar != header:
 		page.add_child(tab_bar)
 
+	# The handheld's cracks (when it is), under the glass so they curve with the screen.
+	_crack.visible = cracked
+	add_child(_crack)
 	# The glass over everything: the CRT (curvature, scanlines, glow, the power-on line),
 	# flashing in each device's own colour.
 	var glass := ColorRect.new()
@@ -206,6 +212,9 @@ func close() -> void:
 func _input(event: InputEvent) -> void:
 	if not visible:
 		return
+	# Under the curved glass, the pointer points a little further out than it looks.
+	if SavePrompt.bend_mouse(self, event):
+		return
 	if _tab == "map" and (event.is_action_pressed("ui_up") or event.is_action_pressed("ui_down")):
 		get_viewport().set_input_as_handled()
 		_map_page.change_floor(1 if event.is_action_pressed("ui_up") else -1)
@@ -235,7 +244,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if visible and UiStyle.visitor():
 		_clock.text = Time.get_time_string_from_system().left(5)
-		var bars := "----" if not Radio.powered else ("||||" if Radio.on_home_channel() else "||..")
+		var bars := "----" if not Radio.powered else ("||||" if Radio.on_home_channel() else ("||.." if Radio.channel_known else "...."))
 		_signal.text = "SIG [%s]" % bars
 		_pulse_time -= delta
 		if _pulse_time <= 0.0 and is_instance_valid(player):
@@ -252,6 +261,11 @@ func _process(delta: float) -> void:
 			if _notice_time <= 0.0:
 				_notice = ""
 				refresh()
+
+
+func set_cracked(on: bool) -> void:
+	cracked = on
+	_crack.visible = on
 
 
 ## Feedback from an action ("Loaded", "That doesn't fit"), shown in amber on the hint line.
@@ -477,7 +491,7 @@ func refresh() -> void:
 		_apply_notice()
 		return
 	if _tab == "radio":
-		_hint.text = "[Left/Right] tune   [Up] power   [Down] write a message, [Enter] send   [Tab] close"
+		_hint.text = "[Left/Right/Wheel] tune, [Shift] 1 MHz   [Up] power   [Down] more   [B] ping   [Tab] close"
 		_apply_notice()
 		return
 

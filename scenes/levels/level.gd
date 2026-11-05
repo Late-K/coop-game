@@ -21,6 +21,10 @@ const CHAPTER_END_DELAY := 7.0
 @export var ambience := "amb_facility"
 ## Footstep sound wherever no EnvironmentZone sets one.
 @export var footsteps := "step_metal"
+## Chapter 1's opening: the Visitor starts outside, walking in first person, with a cracked
+## handheld (until the pod wakes them; see Player.set_first_person). For the radios to start
+## apart on the band (each somewhere random), add a ContactBeacon.
+@export var visitor_opening := false
 
 @onready var players: Node3D = $Players
 @onready var player_spawner: MultiplayerSpawner = $PlayerSpawner

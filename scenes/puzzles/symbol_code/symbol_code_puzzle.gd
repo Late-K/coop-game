@@ -11,7 +11,7 @@ const CODE_LENGTH := 4
 @export var keypad: Keypad
 ## Anything with show_code(code: PackedInt32Array): CodeMonitor, WallCodeDisplay...
 @export var display: Node3D
-## Opened while solved.
+## Opened while solved; a CODE door is released instead (it then opens by hand).
 @export var doors: Array[Door] = []
 ## Switched on while solved: anything with set_active(bool) (PowerLight, TemperatureZone...).
 @export var activate: Array[Node] = []
@@ -80,7 +80,11 @@ func _apply_state(new_code: PackedInt32Array, new_entered: PackedInt32Array, new
 	display.show_code(code)
 	keypad.show_entry(entered)
 	for door in doors:
-		door.set_open(solved)
+		if door.lock == Door.Lock.CODE:
+			if solved and multiplayer.is_server():
+				door.unlock()
+		else:
+			door.set_open(solved)
 	for node in activate:
 		node.set_active(solved)
 

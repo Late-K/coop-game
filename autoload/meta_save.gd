@@ -6,6 +6,9 @@ extends Node
 ## Each machine keeps its own counts, so the two players see different numbers
 ## for the "same" thing, which is asymmetric truth for free.
 
+## A new session began: {iteration} has moved on (the occupant has a new number).
+signal session_started
+
 const PATH := "user://proctor.cfg"
 const ITERATION_BASE := 4116
 
@@ -35,6 +38,7 @@ func begin_session() -> void:
 	for key in session:
 		session[key] = 0
 	record("sessions")
+	session_started.emit()
 
 
 ## True when a story condition (a line's "if") holds on this machine.

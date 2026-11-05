@@ -1,0 +1,59 @@
+[gd_scene format=3]
+
+[ext_resource type="Material" path="res://kit/materials/paint_red.tres" id="m1"]
+[ext_resource type="Material" path="res://kit/materials/plant_dead.tres" id="m2"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_1"]
+radius = 0.22
+height = 0.5
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_2"]
+top_radius = 0.2
+bottom_radius = 0.2
+height = 0.45
+radial_segments = 8
+rings = 1
+
+[sub_resource type="BoxMesh" id="BoxMesh_3"]
+size = Vector3(0.03, 0.7, 0.03)
+
+[sub_resource type="BoxMesh" id="BoxMesh_4"]
+size = Vector3(0.03, 0.7, 0.03)
+
+[sub_resource type="BoxMesh" id="BoxMesh_5"]
+size = Vector3(0.03, 0.7, 0.03)
+
+[sub_resource type="BoxMesh" id="BoxMesh_6"]
+size = Vector3(0.03, 0.7, 0.03)
+
+[node name="DeadPlant" type="StaticBody3D"]
+input_ray_pickable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
+shape = SubResource("CylinderShape3D_1")
+
+[node name="Pot" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.225, 0)
+mesh = SubResource("CylinderMesh_2")
+surface_material_override/0 = ExtResource("m1")
+
+[node name="Stem0" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.955, -0.296, 0, 0.296, 0.955, 0.058803994670474494, 0.75, 0.011920159847703672)
+mesh = SubResource("BoxMesh_3")
+surface_material_override/0 = ExtResource("m2")
+
+[node name="Stem1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.921, 0.389, 0, -0.389, 0.921, -0.013632125681585226, 0.75, 0.058430857852691705)
+mesh = SubResource("BoxMesh_4")
+surface_material_override/0 = ExtResource("m2")
+
+[node name="Stem2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.878, -0.479, 0, 0.479, 0.878, -0.05618740123744778, 0.75, -0.02104699366137719)
+mesh = SubResource("BoxMesh_5")
+surface_material_override/0 = ExtResource("m2")
+
+[node name="Stem3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.980, 0.199, 0, -0.199, 0.980, -0.006729151616103292, 0.75, -0.05962146021800786)
+mesh = SubResource("BoxMesh_6")
+surface_material_override/0 = ExtResource("m2")

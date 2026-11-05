@@ -19,6 +19,7 @@ var _fill_light: OmniLight3D = null
 var _base_energy := 0.0
 var _time := 0.0
 var _rng := RandomNumberGenerator.new()
+var _powered := true
 
 
 func _ready() -> void:
@@ -41,7 +42,7 @@ func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		_update_fixture()
 		return
-	if not flicker:
+	if not flicker or not _powered:
 		return
 	_time += delta
 	var dip := 1.0
@@ -52,6 +53,29 @@ func _process(delta: float) -> void:
 	light_energy = _base_energy * dip
 	if _fill_light:
 		_fill_light.light_energy = fill * dip
+
+
+## Dark, fixture and all, until power_on() (a room waiting for emergency power).
+func power_off() -> void:
+	_powered = false
+	light_energy = 0.0
+	_fixture.visible = false
+	if _fill_light:
+		_fill_light.light_energy = 0.0
+
+
+## Comes up the way old tubes do: a few stutters, then steady (or its usual flicker).
+func power_on() -> void:
+	_fixture.visible = true
+	var tween := create_tween()
+	for step: Array in [[0.5, 0.06], [0.0, 0.14], [0.9, 0.05], [0.1, 0.3], [1.0, 0.04], [0.3, 0.1], [1.0, 0.0]]:
+		tween.tween_callback(func() -> void: light_energy = _base_energy * step[0])
+		tween.tween_interval(step[1])
+	tween.tween_callback(func() -> void:
+		_powered = true
+		if _fill_light:
+			_fill_light.light_energy = fill
+	)
 
 
 ## The strip glows in the light's colour (Retro converts it for the PS1 shader).

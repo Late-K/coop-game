@@ -5,10 +5,14 @@ extends CharacterBody3D
 ## World state (puzzles, enemies, pickups) stays server-authoritative.
 ##
 ## Perspective: third person (top-down) while exploring; using an Interactable
-## with a view point hard-cuts to first person until the player steps back.
+## with a view point hard-cuts to first person until the player steps back. In the
+## Visitor's opening (Level.visitor_opening) they walk in first person instead: mouse look,
+## slow steps, the camera at the head, until set_first_person(false).
 ##
-## Combat: hold aim to raise the pistol (laser sight), fire while aiming. The owner
-## spends ammo locally; the server raycasts the shot and applies the damage.
+## Combat: hold aim (right mouse) to turn toward the cursor, armed or not. Armed, the pistol
+## comes up with its laser and fire shoots; with nothing raised, fire (or shove, F) pushes
+## whatever is in front. The owner spends ammo locally; the server raycasts the shot and
+## applies the damage.
 ##
 ## Cold: the Visitor loses warmth in cold zones and freezes at zero. The Subject
 ## never does; its HUD reads a steady 36.6 °C no matter what (it is not human).
@@ -45,6 +49,8 @@ const DEATH_WATCH := 0.6
 const COLLAPSE_TIME := 1.2
 ## The first-person moment inside the respawn pod.
 const POD_BEAT := 1.8
+## Black and silence after the entrance doors come down, before the pod.
+const CRUSH_SILENCE := 4.0
 const MAX_WARMTH := 100.0
 const FREEZING_DAMAGE_PER_SECOND := 4.0
 const NORMAL_BODY_TEMPERATURE := 36.6
@@ -52,6 +58,20 @@ const NORMAL_BODY_TEMPERATURE := 36.6
 const STRIDE := 1.7
 const ZONE_LAYER := 32 # physics layer 6, "zones"
 const FROZEN_BODY_TEMPERATURE := 29.0
+## Render layer 10, "players": everything that shows a player is drawn on it alone, so no
+## CCTV camera (CctvBank leaves it out) can ever show the partner.
+const VISUAL_LAYER := 1 << 9
+## Walking in first person: slow, heavy steps (deep snow), mouse look, a little head bob.
+const FIRST_PERSON_SPEED := 2.2
+const LOOK_SENSITIVITY := 0.0025
+const MAX_PITCH := 1.3
+const HEAD_BOB := 0.035
+## Going through a door by hand: how far past the doorway you end up, and the longest it
+## may take before giving up (something in the way).
+const PASS_BEYOND := 1.7
+## Seconds the screen takes to go black as they walk into a way down (WayDown).
+const LEAVE_FADE := 1.6
+const PASS_TIMEOUT := 4.0
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var role := Session.Role.NONE
@@ -83,6 +103,9 @@ var warmth := MAX_WARMTH
 var _freeze_damage := 0.0
 var _warned_cold := false
 var is_dead := false
+## Gone down a way out of the level (WayDown), on every peer: out of play behind the black
+## screen, so nothing left behind (husks, the cold) can touch them.
+var gone_down := false
 ## The Interactable this player is looking at in first person, or null.
 var focus: Interactable = null
 var _cutting := false
@@ -101,6 +124,26 @@ var _partner_save_status := SaveGame.Status.AWAY
 var _shove_cooldown := 0.0
 ## A shove from the partner: pushed back, fading out.
 var _knockback := Vector3.ZERO
+## Walking in first person (the Visitor's opening) instead of the top-down view.
+var walking_first_person := false
+## The handheld's screen is cracked (the Visitor's opening; the copy's is whole).
+var handheld_cracked := false
+var _pitch := 0.0
+var _bob := 0.0
+var _opening_applied := false
+var _wake_checked := false
+## Driving snow around the local player in a blizzard (EnvironmentZone.snowfall).
+var _snow := Snowfall.new()
+## The room the local player is in: its shroud is lifted, every other room is black.
+var _room: RoomShroud = null
+## The last room framing the camera held, and the room it was in then (kept through the
+## doorway out, until the next room).
+var _camera_zone: CameraZone = null
+var _camera_room: RoomShroud = null
+## Walking through a door on its own (pass_through): the points still to reach.
+var _passing := false
+var _pass_path: Array[Vector3] = []
+var _pass_time := 0.0
 
 @onready var model: CharacterModel = $Model
 @onready var nameplate: Label3D = $Nameplate
@@ -128,6 +171,9 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	add_to_group("players")
 	aim_ray.add_exception(self)
+	model.visual_layers = VISUAL_LAYER
+	nameplate.layers = VISUAL_LAYER
+	laser.layers = VISUAL_LAYER
 	_apply_role()
 	# A player that already existed when the partner joined may arrive before the role table.
 	Session.roles_changed.connect(_apply_role)
@@ -152,17 +198,27 @@ func _ready() -> void:
 		SaveGame.statuses_changed.connect(_on_save_statuses)
 		# Continuing a save: the server puts us where the save has us.
 		SaveGame.request_player_state.call_deferred()
+		_begin_opening.call_deferred()
+		_begin_wake.call_deferred()
+		_snow.top_level = true
+		add_child(_snow)
 	else:
 		# Remote players are positioned by the synchronizer, not simulated or controlled here.
+		# Nor drawn: the two never see each other, not even past a wall the top-down camera
+		# looks over (docs/design.md, two worlds). Their sounds still carry.
+		model.visible = false
 		set_physics_process(false)
 		set_process_unhandled_input(false)
 		camera_rig.queue_free()
 		interaction_area.queue_free()
 		zone_probe.queue_free()
 		_listener.free() # never entered the tree; only the local player listens
+		_snow.free()
 
 
 func _exit_tree() -> void:
+	if is_multiplayer_authority():
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	if is_multiplayer_authority() and is_instance_valid(overlay) and overlay.get_parent() == get_tree().root:
 		overlay.queue_free()
 		Retro.set_condition(0.0, 0.0)
@@ -173,19 +229,141 @@ func _apply_role() -> void:
 	role = Session.role_of(name.to_int())
 	feels_cold = role == Session.Role.VISITOR
 	nameplate.text = Session.ROLE_NAMES[role]
-	# Only your partner's name floats over them; you know who you are.
-	nameplate.visible = not is_multiplayer_authority()
+	# No name floats over anyone: you know who you are, and the partner is never in view.
+	nameplate.visible = false
 	# This machine's interface: ZP-SYS for the Subject, the handheld for the Visitor. (Roles
 	# reset to none as a session ends, while the HUD is already being freed.)
 	if is_multiplayer_authority() and role != Session.Role.NONE and is_instance_valid(hud) and hud.is_inside_tree():
 		UiStyle.use(role)
 		hud.apply_style()
 	model.look = CharacterModel.Look.SUBJECT if role == Session.Role.SUBJECT else CharacterModel.Look.VISITOR
+	if is_multiplayer_authority() and is_node_ready():
+		_begin_opening.call_deferred() # the role may only now be known
+		_begin_wake.call_deferred()
+
+
+## The Visitor's opening (Level.visitor_opening): outside, on foot in first person, the
+## handheld cracked. Once per spawn; a loaded save (restore) has the last word.
+func _begin_opening() -> void:
+	if _opening_applied or role != Session.Role.VISITOR or not is_inside_tree():
+		return
+	var level := get_tree().get_first_node_in_group("level") as Level
+	if level and level.visitor_opening:
+		_opening_applied = true
+		set_first_person(true)
+		set_handheld_cracked(true)
+
+
+## The Subject's wake (SubjectWake), once per spawn: not when continuing a save, which
+## starts after it, nor once it has played.
+func _begin_wake() -> void:
+	if _wake_checked or role != Session.Role.SUBJECT or not is_inside_tree():
+		return
+	_wake_checked = true
+	var wake := get_tree().get_first_node_in_group("subject_wake") as SubjectWake
+	if wake and not wake.done and SaveGame.pending.is_empty():
+		wake.play_for(self)
+
+
+## A scripted first-person moment (SubjectWake): from black, held at `view` until
+## end_scene_view(). The fade is the caller's.
+func begin_scene_view(view: Transform3D) -> void:
+	_in_cutaway = true
+	fade.color.a = 1.0
+	_view_first_person(view)
+
+
+## Cuts back to the player's own view, standing at `at`.
+func end_scene_view(at: Transform3D) -> void:
+	await _cut(func() -> void:
+		global_position = at.origin
+		rotation.y = at.basis.get_euler().y
+		camera_rig.global_position = global_position
+		_view_third_person()
+	)
+	_in_cutaway = false
+
+
+## Through a door just opened by hand (Door.use): wait for it to sink, walk to the
+## doorway and out the far side. The door shuts behind once the doorway is clear.
+func pass_through(door: Door) -> void:
+	if _passing or not is_multiplayer_authority():
+		return
+	_passing = true
+	_pass_time = 0.0
+	_pass_path.clear()
+	var side := signf(door.to_local(global_position).x)
+	if side == 0.0:
+		side = 1.0
+	var doorway := door.frame_position()
+	doorway.y = global_position.y
+	var across := door.global_basis.x.normalized() * -side
+	await get_tree().create_timer(Door.MOVE_TIME * 0.6).timeout
+	_pass_path.assign([doorway - across * 0.2, doorway + across * PASS_BEYOND])
+
+
+## Up or down a flight (Stairs): a few steps into it, a cut through black, and out at the
+## other end, a storey away.
+func take_stairs(stairs: Stairs) -> void:
+	if _passing or not is_multiplayer_authority():
+		return
+	_passing = true
+	_pass_time = Door.MOVE_TIME # nothing to wait for: start walking at once
+	var into := stairs.global_transform * Vector3(0, 0, Stairs.WALK_IN)
+	into.y = global_position.y
+	_pass_path.assign([into])
+	await get_tree().create_timer(Stairs.DARK).timeout
+	var exit := stairs.other.exit_transform()
+	await _cut(func() -> void:
+		global_position = exit.origin
+		rotation.y = exit.basis.get_euler().y
+		velocity = Vector3.ZERO
+		camera_rig.global_position = global_position
+	)
+	_pass_path.clear()
+	_passing = false
+
+
+## The way to walk this frame while passing through a door (zero while it opens).
+func _pass_step(delta: float) -> Vector3:
+	_pass_time += delta
+	if _pass_time > PASS_TIMEOUT:
+		_pass_path.clear()
+	if _pass_path.is_empty():
+		_passing = _pass_time < Door.MOVE_TIME * 0.6 + 0.1 # still waiting for the door
+		return Vector3.ZERO
+	var to := _pass_path[0] - global_position
+	to.y = 0.0
+	if to.length() < 0.2:
+		_pass_path.remove_at(0)
+		if _pass_path.is_empty():
+			_passing = false
+		return Vector3.ZERO
+	return to.normalized()
+
+
+## On foot in first person (the Visitor's opening), or back to the top-down view.
+func set_first_person(on: bool) -> void:
+	walking_first_person = on
+	_pitch = 0.0
+	if is_multiplayer_authority() and not focus and not _in_cutaway:
+		_view_third_person()
+
+
+## The handheld's screen: cracked across, or whole.
+func set_handheld_cracked(cracked: bool) -> void:
+	handheld_cracked = cracked
+	inventory_screen.set_cracked(cracked)
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if (_cutting or _in_cutaway or is_dead or inventory_screen.visible or _pause_menu_open()
 			or save_prompt.visible or _reload_wait):
+		return
+	if event is InputEventMouseMotion and walking_first_person and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		rotation.y -= event.relative.x * LOOK_SENSITIVITY
+		_pitch = clampf(_pitch - event.relative.y * LOOK_SENSITIVITY, -MAX_PITCH, MAX_PITCH)
+		first_person_camera.rotation.x = _pitch
 		return
 	if focus:
 		if event.is_action_pressed("interact") or event.is_action_pressed("ui_cancel"):
@@ -199,10 +377,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			_use(target)
 	elif event.is_action_pressed("fire") and is_aiming:
-		_try_fire()
+		if armed():
+			_try_fire()
+		else:
+			_shove() # nothing in hand: the hands push
 	elif event.is_action_pressed("reload"):
 		_reload()
-	elif event.is_action_pressed("shove"):
+	elif event.is_action_pressed("shove") and is_aiming:
 		_shove()
 	elif event.is_action_pressed("inventory"):
 		get_viewport().set_input_as_handled()
@@ -213,13 +394,15 @@ func _process(delta: float) -> void:
 	_update_footsteps()
 	_update_model()
 	if is_multiplayer_authority():
+		_update_mouse()
+		_room = RoomShroud.update(get_tree(), global_position, _room)
 		_visit_check -= delta
 		if _visit_check <= 0.0:
 			_visit_check = 0.5
 			_note_visited_room()
 	# Runs on every peer so the partner sees your laser too.
-	laser.visible = is_aiming
-	if is_aiming:
+	laser.visible = is_aiming and armed() and is_multiplayer_authority()
+	if laser.visible:
 		var length := SHOT_RANGE
 		if aim_ray.is_colliding():
 			length = laser_pivot.global_position.distance_to(aim_ray.get_collision_point())
@@ -235,26 +418,38 @@ func _physics_process(delta: float) -> void:
 	radio_on = Radio.powered
 
 	var frozen := (focus != null or _cutting or _in_cutaway or is_dead or inventory_screen.visible
-			or _pause_menu_open() or save_prompt.visible or _reload_wait)
+			or _pause_menu_open() or save_prompt.visible or _reload_wait or _passing)
 	var input := Vector2.ZERO if frozen else Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	if model.pose == CharacterModel.Pose.WAITING and input != Vector2.ZERO:
 		_set_waiting.rpc(false) # done waiting: stand up
-	is_aiming = not frozen and Input.is_action_pressed("aim") and equipped != "" and inventory.has(equipped)
-	hud.set_ammo(is_aiming, "%s  %d / %d" % [Items.display_name(equipped).to_upper(), loaded_rounds,
-			inventory.count_of("ammo")] if is_aiming else "")
+	is_aiming = not frozen and not walking_first_person and Input.is_action_pressed("aim")
+	var raised := is_aiming and armed()
+	hud.set_ammo(raised, "%s  %d / %d" % [Items.display_name(equipped).to_upper(), loaded_rounds,
+			inventory.count_of("ammo")] if raised else "")
 	hud.set_radio(Radio.status_text())
 	Radio.listener_position = global_position
 	_update_condition()
 	var speed := AIM_SPEED if is_aiming else WALK_SPEED
-	# The top-down camera never rotates, so screen-up is always world -Z.
+	# The top-down camera never rotates, so screen-up is always world -Z. In first person,
+	# forward is where they look.
 	var direction := Vector3(input.x, 0.0, input.y)
+	if walking_first_person:
+		direction = global_basis * direction
+		speed = FIRST_PERSON_SPEED
+	if _passing:
+		direction = _pass_step(delta)
+		speed = WALK_SPEED * 0.8
 	velocity.x = direction.x * speed + _knockback.x
 	velocity.z = direction.z * speed + _knockback.z
 	_knockback = _knockback.lerp(Vector3.ZERO, 1.0 - exp(-8.0 * delta))
 	move_and_slide()
+	if walking_first_person and first_person_camera.current and not focus and not _in_cutaway:
+		var pace := Vector2(velocity.x, velocity.z).length()
+		_bob += pace * delta * 2.4
+		first_person_camera.position.y = head_transform.origin.y + sin(_bob) * HEAD_BOB * minf(pace / FIRST_PERSON_SPEED, 1.0)
 
 	var look_direction := _get_aim_direction() if is_aiming else direction
-	if look_direction.length_squared() > 0.001:
+	if not walking_first_person and look_direction.length_squared() > 0.001:
 		var target_yaw := atan2(-look_direction.x, -look_direction.z)
 		rotation.y = lerp_angle(rotation.y, target_yaw, TURN_SPEED * delta)
 
@@ -267,14 +462,24 @@ func _physics_process(delta: float) -> void:
 # --- Interaction & perspective ---------------------------------------------
 
 ## The top-down camera follows the player, except inside a CameraZone, where it holds that
-## room's framing (Signalis-style fixed compositions).
+## room's framing (Signalis-style fixed compositions). It keeps the framing through the
+## doorway out, and only moves on once they're in the next room (RoomShroud), as its
+## lights come on.
 func _update_camera(delta: float) -> void:
 	var target := global_position
 	var distance := CAMERA_DISTANCE
+	var zone: CameraZone = null
 	for area in zone_probe.get_overlapping_areas():
 		if area is CameraZone:
-			target = area.focus_point()
-			distance = area.distance
+			zone = area
+	if is_instance_valid(_camera_zone) and _room == _camera_room and _near_zone(_camera_zone):
+		zone = _camera_zone # same room, or its doorway: not in the next room yet
+	elif zone:
+		_camera_zone = zone
+		_camera_room = _room
+	if zone:
+		target = zone.focus_point()
+		distance = zone.distance
 	var blend := 1.0 - exp(-CAMERA_FOLLOW * delta)
 	if camera_rig.global_position.distance_to(target) > CAMERA_SNAP_DISTANCE:
 		camera_rig.global_position = target
@@ -284,6 +489,28 @@ func _update_camera(delta: float) -> void:
 		_camera_distance = lerpf(_camera_distance, distance, blend)
 	third_person_camera.position = CAMERA_DIRECTION * _camera_distance
 	_listener.global_position = global_position + Vector3.UP * 1.5
+	# Top-down, up on screen is north; in first person, you hear the way you face.
+	_listener.global_basis = global_basis if walking_first_person else Basis()
+
+
+## Within a doorway's reach of the zone's box: just stepped out of it, not walked off.
+func _near_zone(zone: CameraZone) -> bool:
+	for child in zone.get_children():
+		if child is CollisionShape3D and child.shape is BoxShape3D:
+			var local: Vector3 = zone.global_transform.affine_inverse() * global_position
+			var half: Vector3 = (child.shape as BoxShape3D).size / 2.0 + Vector3.ONE * 2.0
+			return absf(local.x) < half.x and absf(local.z) < half.z
+	return false
+
+
+## Walking in first person the mouse is captured for looking around, and freed for any
+## screen, menu or console.
+func _update_mouse() -> void:
+	var look := walking_first_person and not (focus or _cutting or _in_cutaway or is_dead
+			or inventory_screen.visible or _pause_menu_open() or save_prompt.visible or _reload_wait)
+	var mode := Input.MOUSE_MODE_CAPTURED if look else Input.MOUSE_MODE_VISIBLE
+	if Input.mouse_mode != mode:
+		Input.mouse_mode = mode
 
 
 func _use(target: Interactable) -> void:
@@ -339,8 +566,14 @@ func _view_first_person(view: Transform3D) -> void:
 	_set_own_body_visible(false)
 
 
+## Back to the player's own view: top-down, or the head when walking in first person.
 func _view_third_person() -> void:
 	first_person_camera.transform = head_transform
+	if walking_first_person:
+		first_person_camera.rotation.x = _pitch
+		first_person_camera.make_current()
+		_set_own_body_visible(false)
+		return
 	third_person_camera.make_current()
 	_set_own_body_visible(true)
 
@@ -383,7 +616,25 @@ func _update_prompt() -> void:
 		hud.set_prompt("[E / Esc] Step back")
 		return
 	var target := _find_interactable()
-	hud.set_prompt("[E] %s" % target.get_prompt(self) if target else "")
+	if target:
+		hud.set_prompt("[E] %s" % target.get_prompt(self))
+	elif _enemy_near():
+		if not is_aiming:
+			hud.set_prompt("[Right mouse] Aim")
+		elif not armed():
+			hud.set_prompt("[F / Click] Shove")
+		else:
+			hud.set_prompt("[Click] Fire   [F] Shove")
+	else:
+		hud.set_prompt("")
+
+
+## An enemy up and close enough to be worth shoving (the prompt says how).
+func _enemy_near() -> bool:
+	for enemy: Enemy in get_tree().get_nodes_in_group("enemies"):
+		if enemy.state != Enemy.State.DOWNED and enemy.global_position.distance_to(global_position) < SHOVE_RANGE + 1.5:
+			return true
+	return false
 
 
 ## Direction from the player to the mouse cursor on the player's floor plane.
@@ -623,6 +874,7 @@ func save_state() -> Dictionary:
 		"inventory": inventory.slots.duplicate(true), "stash": stash.slots.duplicate(true),
 		"equipped": equipped, "loaded_rounds": loaded_rounds, "health": health, "warmth": warmth,
 		"files": files.duplicate(), "maps": maps.duplicate(), "visited": visited.keys(),
+		"first_person": walking_first_person, "cracked": handheld_cracked,
 	}
 
 
@@ -648,6 +900,8 @@ func restore(state: Dictionary, at: Transform3D, mode: String) -> void:
 	_last_health = health
 	is_dead = false
 	_reload_wait = false
+	if gone_down:
+		_set_gone_down.rpc(false)
 	if inventory_screen.visible:
 		close_inventory()
 	save_prompt.close(false)
@@ -658,25 +912,64 @@ func restore(state: Dictionary, at: Transform3D, mode: String) -> void:
 	rotation.y = at.basis.get_euler().y
 	velocity = Vector3.ZERO
 	camera_rig.global_position = global_position
+	set_handheld_cracked(state.get("cracked", false))
+	set_first_person(state.get("first_person", false))
+	if state.is_empty():
+		# Back as at the chapter start, the opening included.
+		_opening_applied = false
+		_begin_opening()
 	_refresh_hud()
 	if mode == "start":
 		return
 	_set_waiting.rpc(mode == "waiting")
-	var tween := create_tween()
 	if mode == "pod":
-		# Wake inside the pod, looking out through the glass, then step out.
-		_in_cutaway = true
-		_view_first_person(Transform3D(at.basis, at.origin + at.basis.z * 0.9 + Vector3.UP * 1.55))
-		tween.tween_property(fade, "color:a", 0.0, 0.8)
-		tween.tween_interval(POD_BEAT)
-		tween.tween_callback(func() -> void:
-			_view_third_person()
-			_in_cutaway = false
-			Story.show_local("death")
-		)
+		_wake_in_pod(at, 0.8, "death")
 	else:
 		_view_third_person()
-		tween.tween_property(fade, "color:a", 0.0, 1.2)
+		create_tween().tween_property(fade, "color:a", 0.0, 1.2)
+
+
+## From black: inside the pod at `at`, looking out through the glass, then step out.
+func _wake_in_pod(at: Transform3D, fade_in: float, line: String) -> void:
+	_in_cutaway = true
+	_view_first_person(Transform3D(at.basis, at.origin + at.basis.z * 0.9 + Vector3.UP * 1.55))
+	var tween := create_tween()
+	tween.tween_property(fade, "color:a", 0.0, fade_in)
+	tween.tween_interval(POD_BEAT)
+	tween.tween_callback(func() -> void:
+		_view_third_person()
+		_in_cutaway = false
+		if line:
+			Story.show_local(line)
+	)
+
+
+## Server -> the Visitor (EntranceCrush): the entrance doors came down on them. A hard cut
+## to black and silence; then they wake in the pod at `at`, printed: in third person, the
+## handheld whole, as if the facility always had their pattern. Nothing remarks on it.
+@rpc("any_peer", "call_local", "reliable")
+func reprint_after_crush(at: Transform3D) -> void:
+	if multiplayer.get_remote_sender_id() != 1 or not is_multiplayer_authority():
+		return
+	_reload_wait = true
+	fade.color.a = 1.0
+	if inventory_screen.visible:
+		close_inventory()
+	save_prompt.close(false)
+	if focus:
+		focus.has_local_focus = false
+		focus = null
+	# Out of the doorway at once: what's under the doors is the body, not us.
+	velocity = Vector3.ZERO
+	global_position = at.origin
+	rotation.y = at.basis.get_euler().y
+	camera_rig.global_position = global_position
+	warmth = MAX_WARMTH
+	await get_tree().create_timer(CRUSH_SILENCE).timeout
+	set_handheld_cracked(false)
+	set_first_person(false)
+	_reload_wait = false
+	_wake_in_pod(at, 2.0, "")
 
 
 func _fill(target: Inventory, slots: Array) -> void:
@@ -685,13 +978,32 @@ func _fill(target: Inventory, slots: Array) -> void:
 	target.changed.emit()
 
 
+## Gone down a way out of the level (WayDown): they walk on to `walk_to` (into the lift,
+## down the first steps) as the screen goes black, then wait there, still and silent, for
+## the partner to follow. Out of play from now on: nothing in the level can hurt them.
+func leave_level(walk_to: Variant = null) -> void:
+	_set_gone_down.rpc(true)
+	if walk_to is Vector3 and is_multiplayer_authority():
+		_passing = true
+		_pass_time = Door.MOVE_TIME # nothing to wait for: start walking at once
+		var into: Vector3 = walk_to
+		into.y = global_position.y
+		_pass_path.assign([into])
+	wait_for_reload(LEAVE_FADE)
+
+
+@rpc("authority", "call_local", "reliable")
+func _set_gone_down(gone: bool) -> void:
+	gone_down = gone
+
+
 ## The partner died: this screen goes black too, while the server reloads the save.
-func wait_for_reload() -> void:
+func wait_for_reload(fade_time := 1.0) -> void:
 	_reload_wait = true
 	if inventory_screen.visible:
 		close_inventory()
 	save_prompt.close(false)
-	create_tween().tween_property(fade, "color:a", 1.0, 1.0)
+	create_tween().tween_property(fade, "color:a", 1.0, fade_time)
 
 
 @rpc("authority", "call_local", "reliable")
@@ -795,8 +1107,8 @@ func _show_shot(from: Vector3, to: Vector3) -> void:
 	model.play_shot()
 	# Loud and far-reaching: the partner hears your fights, muffled, from other rooms.
 	Sound.play_at("gunshot", from, 8.0, 60.0)
-	if from.distance_to(to) < 0.05:
-		return # point-blank: nothing to draw
+	if from.distance_to(to) < 0.05 or not is_multiplayer_authority():
+		return # point-blank, or the partner's: nothing to draw
 	var tracer := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
 	mesh.size = Vector3(0.03, 0.03, from.distance_to(to))
@@ -811,7 +1123,7 @@ func _show_shot(from: Vector3, to: Vector3) -> void:
 ## The model follows synced state on every peer: aiming, and health (a drop is a hit; zero
 ## is death, until the respawn restores it).
 func _update_model() -> void:
-	model.aiming = is_aiming
+	model.aiming = is_aiming and armed()
 	model.dead = health <= 0
 	if health < _last_health and health > 0:
 		model.play_hurt()
@@ -828,8 +1140,14 @@ func _play_gesture(gesture: String) -> void:
 
 ## A short push: knocks back and staggers whatever is in front (an enemy, or the partner).
 ## No damage. The server decides what it hits.
+## Holding a weapon that can be raised (equipped and still carried).
+func armed() -> bool:
+	return equipped != "" and inventory.has(equipped)
+
+
+## A push the way you're aiming: knocks back and staggers what's in front, no damage.
 func _shove() -> void:
-	if _shove_cooldown > 0.0 or is_aiming:
+	if _shove_cooldown > 0.0:
 		return
 	_shove_cooldown = SHOVE_COOLDOWN
 	model.play_gesture("shove")
@@ -873,7 +1191,7 @@ func take_damage(amount: int) -> void:
 
 
 func _hurt(amount: int) -> void:
-	if is_dead:
+	if is_dead or gone_down:
 		return
 	health = maxi(health - amount, 0)
 	_refresh_hud()
@@ -953,6 +1271,7 @@ func _update_environment() -> void:
 	var ambience := level.ambience if level else ""
 	var haven_ambience := ""
 	var interference := 0.0
+	var snowing := false
 	for area in zone_probe.get_overlapping_areas():
 		if area is EnvironmentZone:
 			if area.environment:
@@ -960,10 +1279,15 @@ func _update_environment() -> void:
 			if area.ambience:
 				ambience = area.ambience
 			interference = maxf(interference, area.radio_interference)
+			snowing = snowing or area.snowfall
 		elif area is SafeRoom and area.ambience:
 			haven_ambience = area.ambience
 	if haven_ambience:
 		ambience = haven_ambience
+	_snow.emitting = snowing
+	_snow.global_position = global_position + Vector3.UP * 2.0
+	if _reload_wait:
+		ambience = "" # behind a black screen there is nothing to hear
 	Radio.local_interference = interference
 	if third_person_camera.environment != environment:
 		third_person_camera.environment = environment
@@ -1009,7 +1333,7 @@ func body_temperature() -> float:
 
 
 func _update_warmth(delta: float) -> void:
-	if not feels_cold or is_dead:
+	if not feels_cold or is_dead or gone_down:
 		return
 	var rate := 0.0
 	var haven_rate := -INF

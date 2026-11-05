@@ -13,10 +13,22 @@ extends Node
 ## talking, and players have to move (or wait) to be understood.
 ## Works whenever a partner is connected, the lobby included. Full duplex.
 ##
-## The band: both radios start on HOME_FREQUENCY, the partner channel. The terminal's RADIO
-## tab (RadioTuner) tunes elsewhere to find stations (RadioSignal), but voice and messages
-## only reach a radio tuned to the sender's frequency; slightly off comes through as static
-## and garble, further off not at all. So tuning away loses the partner, unless they follow.
+## Like a real radio: there is no special channel. Whatever is sent (voice, a message, a
+## ping) goes out on the sender's frequency, and any radio tuned there hears it; slightly
+## off comes through as static and garble, further off not at all. Any frequency on the
+## band will do for the two of them, as long as both are on it. The terminal's RADIO tab
+## (RadioTuner) tunes, scans and keeps one frequency in memory (`channel`, the MEM button).
+##
+## Getting attention: a ping (B, or PING) is a short call tone that carries much further
+## across the dial than a voice (PING_BANDWIDTH), so someone sweeping nearby hears it through
+## the static and can home in. CALL keeps pinging every CALL_INTERVAL, repeating the last
+## message now and then, until switched off: a call stays on the air, so the partner's
+## radio picks it up between the beeps too (signal meter, SCAN) when tuned near it. SCAN
+## steps up the band and stops on anything: a station, or the partner's voice or call.
+##
+## Nothing connects or pairs: you hear whatever is on your frequency, and that's all. In a
+## level with an emergency beacon (ContactBeacon) each radio starts somewhere random
+## (start_random), so the two have to find each other on the band.
 ##
 ## The radio can be switched off (RADIO tab: POWER): no voice or messages either way, no
 ## stations, nothing on the HUD, and the map goes dark. Special enemies track any radio that
@@ -67,6 +79,21 @@ const CHAT_HISTORY := 30
 const CHAT_NOISE := "#%&*/?=~"
 ## Voice packet header: interference (1 byte), then the frequency x10 (2 bytes).
 const HEADER := 3
+## How far off (MHz) a ping is still heard, through static: far wider than a voice.
+const PING_BANDWIDTH := 2.0
+## The ping: beeps of this pitch (Hz), each on for PING_ON and off for PING_OFF seconds.
+const PING_TONE := 1150.0
+const PING_BEEPS := 3
+const PING_ON := 0.11
+const PING_OFF := 0.07
+## CALL: a ping this often, and the last message again every MESSAGE_EVERY pings.
+const CALL_INTERVAL := 2.5
+const MESSAGE_EVERY := 4
+## SCAN: steps per second, and how strong a signal has to be to stop on it.
+const SCAN_RATE := 90.0
+const SCAN_STOP := 0.35
+## A partner transmission counts as "on the air" this long after its last packet.
+const ACTIVITY_HOLD := 0.6
 ## Seconds into a chapter before PROCTOR remarks on a closed microphone; sooner if the
 ## player tries to talk or types a message.
 const MIC_NOTICE_DELAY := 40.0
@@ -83,6 +110,16 @@ var test_tone := false
 ## True when the microphone could not be opened (none, or blocked by the OS).
 var mic_failed := false
 var frequency := HOME_FREQUENCY
+## The frequency in memory (MEM), and whether there is one.
+var channel := HOME_FREQUENCY
+var channel_known := true
+## CALL is on: pinging every CALL_INTERVAL.
+var calling := false
+## SCAN is on: stepping up the band until something comes in.
+var scanning := false
+## How clearly the partner is coming in on this frequency right now (0..1), while they're
+## transmitting (voice, ping or message); 0 when they're not, or are tuned elsewhere.
+var partner_signal := 0.0
 var powered := true
 ## The station heard best on the current frequency (null for none), and how well (0..1).
 var station: RadioSignal = null
@@ -126,6 +163,16 @@ var _level_time := 0.0
 var _mic_noticed := false
 var _wants_mic := false
 var _was_online := false
+var _activity_time := 0.0
+var _call_time := 0.0
+var _calls_sent := 0
+## The last message sent, for CALL to repeat.
+var _last_message := ""
+var _scan_acc := 0.0
+## SCAN has left the signal it started on (so it doesn't stop on it again at once).
+var _scan_cleared := false
+## Where the partner is calling (CALL on), or -1.
+var _partner_call := -1.0
 
 
 func _ready() -> void:
@@ -169,7 +216,16 @@ func _process(delta: float) -> void:
 	if _was_online and not online:
 		_reset_session() # the session ended
 	_was_online = online
+	if online and powered and not typing and Input.is_action_just_pressed("radio_ping"):
+		send_ping()
+	_activity_time -= delta
+	if _activity_time <= 0.0:
+		partner_signal = 0.0
+	if _partner_call > 0.0 and powered:
+		partner_signal = maxf(partner_signal, reception(frequency, _partner_call, PING_BANDWIDTH))
 	_update_stations()
+	_update_call(delta, online)
+	_update_scan(delta)
 	_check_mic_notice(delta)
 	if tuner_open:
 		unread = 0
@@ -180,6 +236,8 @@ func set_powered(on: bool) -> void:
 		return
 	powered = on
 	if not on:
+		set_calling(false)
+		scanning = false
 		if transmitting:
 			_set_transmitting(false)
 		if receiving:
@@ -187,8 +245,25 @@ func set_powered(on: bool) -> void:
 	Sound.play_ui("radio_key" if on else "radio_unkey", -6.0, 0.8)
 
 
+## True when tuned to the frequency in memory.
 func on_home_channel() -> bool:
-	return absf(frequency - HOME_FREQUENCY) < 0.01
+	return channel_known and absf(frequency - channel) < 0.01
+
+
+## Switched on somewhere random on the band, well away from `away_from` (the emergency
+## beacon), with nothing in memory. (ContactBeacon, at level start.)
+func start_random(away_from: float) -> void:
+	channel_known = false
+	var start := away_from
+	while absf(start - away_from) < 8.0:
+		start = snappedf(_rng.randf_range(MIN_FREQUENCY, MAX_FREQUENCY), FREQUENCY_STEP)
+	tune(start)
+
+
+## MEM: keep `at` in memory.
+func store(at: float) -> void:
+	channel = clampf(snappedf(at, FREQUENCY_STEP), MIN_FREQUENCY, MAX_FREQUENCY)
+	channel_known = true
 
 
 func tune(to: float) -> void:
@@ -196,14 +271,52 @@ func tune(to: float) -> void:
 	if not is_equal_approx(tuned, frequency):
 		frequency = tuned
 		frequency_changed.emit(frequency)
+		if calling:
+			_tell_call()
 
 
-## How well something sent on `sent` is heard on `tuned`: 1 clear, 0 nothing.
-static func reception(tuned: float, sent: float) -> float:
+## How well something sent on `sent` is heard on `tuned`: 1 clear, 0 nothing. `width` is how
+## far off it still carries (BANDWIDTH for voice and messages, PING_BANDWIDTH for pings).
+static func reception(tuned: float, sent: float, width := BANDWIDTH) -> float:
 	var off := absf(tuned - sent)
 	if off < 0.05:
 		return 1.0
-	return clampf(1.0 - off / BANDWIDTH, 0.0, 1.0)
+	return clampf(1.0 - off / width, 0.0, 1.0)
+
+
+## A call tone on this frequency, for anyone tuned near it.
+func send_ping() -> void:
+	if not Net.is_online() or not powered:
+		return
+	MetaSave.session["radio_presses"] += 1
+	Sound.play_ui("radio_key", -12.0, 1.5)
+	_ping.rpc(frequency)
+
+
+func set_calling(on: bool) -> void:
+	var was := calling
+	calling = on and powered
+	_call_time = 0.0
+	_calls_sent = 0
+	if calling != was:
+		_tell_call()
+
+
+## Tells the partner's radio where this one is calling (or that it stopped).
+func _tell_call() -> void:
+	if Net.is_online():
+		_calling_on.rpc(frequency if calling else -1.0)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _calling_on(at: float) -> void:
+	_partner_call = at
+
+
+func set_scanning(on: bool) -> void:
+	scanning = on and powered
+	_scan_acc = 0.0
+	_scan_cleared = false
 
 
 ## Sends a text message on the current frequency. Only a radio tuned to it receives it.
@@ -214,6 +327,7 @@ func send_chat(text: String) -> void:
 	MetaSave.session["radio_presses"] += 1
 	if mic_failed:
 		_wants_mic = true
+	_last_message = text
 	_add_chat("TX> " + text, true)
 	_chat.rpc(text, frequency)
 
@@ -235,8 +349,12 @@ func status_text() -> String:
 		lines.append("RX  signal [%s%s]" % ["|".repeat(signal_bars), ".".repeat(4 - signal_bars)])
 	if unread > 0:
 		lines.append("RX< %d new message%s  [Tab] radio" % [unread, "" if unread == 1 else "s"])
+	if calling:
+		lines.append("CALLING %.1f" % frequency)
+	if scanning:
+		lines.append("SCAN %.1f" % frequency)
 	if lines.is_empty() and not on_home_channel():
-		lines.append("FREQ %.1f  off channel" % frequency)
+		lines.append("FREQ %.1f" % frequency)
 	return "\n".join(lines)
 
 
@@ -364,9 +482,11 @@ func _send(samples: PackedFloat32Array) -> void:
 func _voice(packet: PackedByteArray) -> void:
 	if not powered or packet.size() <= HEADER or packet.size() > PACKET_SAMPLES + HEADER:
 		return
-	var heard := reception(frequency, packet.decode_u16(1) / 10.0)
+	var sent := packet.decode_u16(1) / 10.0
+	var heard := reception(frequency, sent)
 	if heard <= 0.0:
 		return # tuned elsewhere: this transmission never reaches us
+	_on_partner(heard)
 	_rx_interference = maxf(maxf(local_interference, packet[0] / 255.0), 1.0 - heard)
 	var interference := _rx_interference
 	# Bad signal: whole chunks of speech fall out, leaving only static.
@@ -428,6 +548,7 @@ func _chat(text: String, sent: float) -> void:
 	var heard := reception(frequency, sent)
 	if heard <= 0.0 or not powered:
 		return # nobody was listening on that frequency
+	_on_partner(heard)
 	text = text.left(CHAT_MAX)
 	if heard < 1.0:
 		var garbled := ""
@@ -487,6 +608,12 @@ func _set_loop(player: AudioStreamPlayer, amount: float, offset_db: float) -> vo
 
 
 func _reset_session() -> void:
+	channel = HOME_FREQUENCY
+	channel_known = true
+	calling = false
+	scanning = false
+	_partner_call = -1.0
+	_last_message = ""
 	tune(HOME_FREQUENCY)
 	powered = true
 	_heard.clear()
@@ -495,6 +622,93 @@ func _reset_session() -> void:
 	_level_time = 0.0
 	_mic_noticed = false
 	_wants_mic = false
+
+
+# --- On the air ------------------------------------------------------------------
+
+## Something of the partner's came in, `heard` well: it's on the air (the tuner's meter
+## and scope), and SCAN stops on it.
+func _on_partner(heard: float) -> void:
+	partner_signal = maxf(partner_signal, heard)
+	_activity_time = ACTIVITY_HOLD
+	if scanning and heard >= SCAN_STOP:
+		set_scanning(false)
+		Sound.play_ui("keypad_press", -8.0, 1.2)
+
+
+## A ping: PING_BEEPS short tones, played through the radio like a voice, fainter and
+## buried in static the further off it's tuned.
+@rpc("any_peer", "call_remote", "reliable")
+func _ping(sent: float) -> void:
+	var heard := reception(frequency, sent, PING_BANDWIDTH)
+	if not powered or heard <= 0.0:
+		return
+	var static_level := BASE_STATIC + (1.0 - heard) * 0.3 + local_interference * INTERFERENCE_STATIC
+	var level := 0.45 * heard
+	var start := _rx.size()
+	var on := roundi(PING_ON * RATE)
+	var off := roundi(PING_OFF * RATE)
+	_rx.resize(start + PING_BEEPS * (on + off))
+	var i := start
+	for beep in PING_BEEPS:
+		for n in on + off:
+			var tone := sin(TAU * PING_TONE * n / RATE) * level if n < on else 0.0
+			_rx[i] = tone + _rng.randf_range(-1.0, 1.0) * static_level
+			i += 1
+	_rx_interference = maxf(local_interference, 1.0 - heard)
+	_rx_quiet = 0.0
+	if not receiving:
+		receiving = true
+		receiving_changed.emit(true)
+	_on_partner(heard)
+
+
+## CALL: a ping every CALL_INTERVAL, and the last message every MESSAGE_EVERY pings.
+func _update_call(delta: float, online: bool) -> void:
+	if not calling or not online or not powered:
+		return
+	_call_time -= delta
+	if _call_time > 0.0:
+		return
+	_call_time = CALL_INTERVAL
+	send_ping()
+	_calls_sent += 1
+	if not _last_message.is_empty() and _calls_sent % MESSAGE_EVERY == 0:
+		_chat.rpc(_last_message, frequency)
+
+
+## SCAN: up the band (round to the bottom at the top) until something comes in: a station,
+## or the partner (_on_partner stops it). It leaves whatever it started on first.
+func _update_scan(delta: float) -> void:
+	if not scanning:
+		return
+	_scan_acc += delta * SCAN_RATE
+	while _scan_acc >= 1.0 and scanning:
+		_scan_acc -= 1.0
+		var next := frequency + FREQUENCY_STEP
+		tune(MIN_FREQUENCY if next > MAX_FREQUENCY + 0.01 else next)
+		var strength := _signal_at(frequency)
+		if strength < 0.15:
+			_scan_cleared = true
+		elif _scan_cleared and strength >= SCAN_STOP:
+			# Ride on up to where it's strongest, and stop there.
+			while frequency + FREQUENCY_STEP <= MAX_FREQUENCY + 0.01 \
+					and _signal_at(frequency + FREQUENCY_STEP) > strength:
+				tune(frequency + FREQUENCY_STEP)
+				strength = _signal_at(frequency)
+			set_scanning(false)
+			Sound.play_ui("keypad_press", -8.0, 1.2)
+
+
+## How strongly something steady comes in on `at`: the best station, or the partner's call.
+## (Voice and messages only show up as they arrive: _on_partner.)
+func _signal_at(at: float) -> float:
+	var best := 0.0
+	if _partner_call > 0.0:
+		best = reception(at, _partner_call, PING_BANDWIDTH)
+	for node in get_tree().get_nodes_in_group("radio_signals"):
+		best = maxf(best, node.strength_at(at, listener_position))
+	return best
 
 
 ## A player with a closed microphone has stepped outside the script: PROCTOR notices,
