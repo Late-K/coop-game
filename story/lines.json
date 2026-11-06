@@ -1,13 +1,13 @@
 {
 	"intro": {
 		"speaker": "ZP-SYS",
-		"subject": "Emergency power restored. Pod 4 seal released. Good morning, occupant {iteration}. Please remain calm while your memory loads. If your memory does not load, please remain calm anyway.",
-		"visitor": "Perimeter sensor twelve: heat signature detected. Unscheduled visitor. Please hold still while the facility decides what you are."
+		"subject": "Emergency power restored. Pod 04 seal released. Occupant {iteration}: revival complete. Remain in position until motor function is confirmed.",
+		"visitor": "Perimeter sensor 12: heat signature detected. Unregistered personnel. Remain in position. Awaiting identification."
 	},
 	"perimeter": {
 		"speaker": "ZP-SYS",
 		"keep": true,
-		"subject": "Perimeter lamps can be operated from this cell. Reserve power permits two at a time. There is a heat signature in the snow. Assisting it is optional. Everything here is optional, now."
+		"subject": "Perimeter lighting: manual control available at this station. Reserve power limit: two lamps at a time. Heat signature detected on the perimeter."
 	},
 	"whiteout": {
 		"keep": true,
@@ -26,12 +26,12 @@
 	"intake_complete": {
 		"speaker": "ZP-SYS",
 		"keep": true,
-		"subject": "Outer door cycled. Perimeter contact lost. Intake complete. The occupant register has been updated."
+		"subject": "Outer door cycle complete. Perimeter contact lost. Intake logged. Occupant register updated."
 	},
 	"calibration_done": {
 		"speaker": "ZP-SYS",
 		"keep": true,
-		"subject": "Calibration complete. Occupant behaved as predicted. Please proceed to the next chamber. Please disregard the wall."
+		"subject": "Calibration complete. Results within expected range. Proceed to chamber 02."
 	},
 	"body_found": {
 		"keep": true,
@@ -40,25 +40,25 @@
 	"records_warning": {
 		"speaker": "ZP-SYS",
 		"keep": true,
-		"subject": "Acoustic unit active in Records. Intake 2 is approaching it. Radio silence is recommended. Silence is always recommended.",
-		"visitor": "Acoustic unit active in Records. Radios are not permitted beyond the door. The unit will find them. That is what it is for."
+		"subject": "Caution: acoustic unit active in Records. Personnel approaching. Radio silence advised.",
+		"visitor": "Caution: acoustic unit active in Records. The unit tracks active radios. Switch radios off before entry."
 	},
 	"chamber02_done": {
 		"speaker": "ZP-SYS",
 		"keep": true,
-		"subject": "Release accepted. You heard it. Most occupants do not, the first time. Most occupants do not get a second time."
+		"subject": "Release code accepted. Chamber 02 exit unsealed."
 	},
 	"plant_online": {
 		"speaker": "ZP-SYS",
 		"keep": true,
-		"subject": "Generator 4 online. Sector 4 power restored. Thank you, occupant. The facility is warmer now. That was not for you.",
-		"visitor": "Breakers closed. Sector 4 power restored. Heating, lighting and doors will return by section. Somewhere close, something large has started to turn."
+		"subject": "Generator 4 online. Sector 4 power restored.",
+		"visitor": "Breakers closed. Sector 4 power restored. Heating, lighting and doors returning by section."
 	},
 	"power_returning": {
 		"speaker": "ZP-SYS",
 		"keep": true,
-		"subject": "Power is returning to sector 4 by section. Doors that were dead will open. Things that were dead may also open. Please carry on.",
-		"visitor": "Heating restored. Lighting restored by section. Sealed doors in this sector will now open. The way down is open. The way up is not."
+		"subject": "Sector 4 power returning by section. Sealed doors in this sector are now operable.",
+		"visitor": "Heating restored. Lighting restored by section. Sealed doors in this sector are now operable. Lower levels accessible via stairwell C."
 	},
 	"went_down_subject": {
 		"keep": true,
@@ -70,48 +70,48 @@
 	},
 	"plant_vented": {
 		"speaker": "ZP-SYS",
-		"text": "Pressure vented. Restart sequence aborted. Begin again."
+		"text": "Pressure vented. Restart sequence aborted. Reinitialise restart sequence."
 	},
 	"released": {
 		"speaker": "ZP-SYS",
 		"keep": true,
-		"visitor": "Release code accepted. Intake 2, you are cleared to proceed. Please do not touch anything you do not recognise. Please recognise as little as possible."
+		"visitor": "Release code accepted. Intake 2 cleared to proceed."
 	},
 	"airlock_sealed": {
 		"speaker": "ZP-SYS",
-		"visitor": "Outer door sealed. Welcome to Zero Point. The temperature inside is also lethal, but more slowly. Please proceed to decontamination. Decontamination is unavailable. Please proceed anyway."
+		"visitor": "Outer door sealed. Welcome to Zero Point. Internal temperature below safe limits. Proceed to the nearest heated area."
 	},
 	"cell_monitor": {
 		"speaker": "ZP-SYS",
 		"keep": true,
-		"subject": "Access code displayed for maintenance personnel. You are not maintenance personnel. Read it to someone who might be."
+		"subject": "Maintenance access code on display. Relay code to maintenance personnel."
 	},
 	"keypad1": {
 		"speaker": "ZP-SYS",
 		"keep": true,
-		"visitor": "This keypad requires a code. The code is displayed in another room, to another person. The facility was designed this way. It was designed by someone who did not trust anyone."
+		"visitor": "Access code required. Code is displayed at the occupant monitor, cell 04."
 	},
 	"monitor_first": {
 		"speaker": "ZP-SYS",
-		"visitor": "Those symbols are not meant for you. Describe them anyway."
+		"visitor": "Notice: this display is encoded for occupant use only."
 	},
 	"keypad_first": {
 		"speaker": "ZP-SYS",
-		"subject": "A keypad. You know what it wants. You do not know how you know. That is normal. Please believe that is normal."
+		"subject": "Keypad: access code required."
 	},
 	"power_restored": {
 		"speaker": "ZP-SYS",
 		"keep": true,
-		"subject": "East wing power restored. Cell 4 unlocked. You may stop pretending to be asleep. You were very convincing.",
-		"visitor": "East wing power and heating restored. You are welcome. Nobody has needed anything from this system in a very long time."
+		"subject": "East wing power restored. Cell 04 unlocked.",
+		"visitor": "East wing power and heating restored."
 	},
 	"storage": {
 		"speaker": "ZP-SYS",
-		"subject": "Supply room. Last inventory check: a long time ago. One of you will need these more than the other. One of you only thinks it is cold."
+		"subject": "Supply room 4B. Inventory not verified since last audit. Distribute supplies as required."
 	},
 	"survival_enemy": {
 		"speaker": "ZP-SYS",
-		"visitor": "Caution: maintenance unit 7 is active. It has been active without instructions for a very long time. Please do not take it personally."
+		"visitor": "Caution: maintenance unit 07 active. Unit not responding to commands. Keep clear."
 	},
 	"frozen_door": {
 		"keep": true,
@@ -119,23 +119,23 @@
 	},
 	"heater_on": {
 		"speaker": "ZP-SYS",
-		"text": "Heater online. Bulkhead 4 thawing. Section 4 had been frozen for {iteration} cycles. Approximately."
+		"text": "Heater online. Bulkhead 4 thaw in progress. Thaw cycle {iteration}."
 	},
 	"p3_room": {
 		"speaker": "ZP-SYS",
 		"keep": true,
-		"subject": "Calibration room. Enter what you cannot see."
+		"subject": "Calibration chamber 01. Reference sequence displayed off-site. Enter sequence at the console."
 	},
 	"p3_solved": {
 		"speaker": "ZP-SYS",
 		"keep": true,
-		"subject": "Code accepted. ...You could not have seen that code from where you were standing. Logging anomaly.",
-		"visitor": "Code accepted. Your companion could not have seen it. Ask them how. Then ask yourself how you would know if they lied."
+		"subject": "Sequence accepted. Reference display not in line of sight. Anomaly logged.",
+		"visitor": "Sequence accepted. Remote entry confirmed. Anomaly logged."
 	},
 	"corridor_open": {
 		"speaker": "ZP-SYS",
-		"subject": "Bulkhead open. Proceed toward the visitor. Be gentle. They break easily.",
-		"visitor": "Bulkhead open. Proceed toward the occupant. Do not be alarmed by the way it looks at you."
+		"subject": "Bulkhead open. Proceed to the intake wing.",
+		"visitor": "Bulkhead open. Proceed to the occupant wing."
 	},
 	"radio_unused": {
 		"speaker": "PROCTOR",
@@ -145,21 +145,21 @@
 	"reunion": {
 		"speaker": "ZP-SYS",
 		"keep": true,
-		"text": "Two occupants present. Test {iteration}... correction. Headcount: two. Logging."
+		"text": "Occupants present: 2. Test {iteration}... correction. Headcount: 2. Logged."
 	},
 	"map_monitor": {
 		"speaker": "ZP-SYS",
-		"text": "Facility overview. Two signals. They move when you move. This screen has had nothing to show for a very long time. It is very glad you are here."
+		"text": "Facility overview. Tracking 2 signals."
 	},
 	"frozen_body": {
 		"speaker": "ZP-SYS",
-		"subject": "Cold storage, unit 4. Contents: one occupant. Please do not compare yourself to the contents.",
-		"visitor": "Cold storage, unit 4. The occupant resembles your companion. This is a coincidence. Please accept it as one."
+		"subject": "Cold storage, unit 04. Contents: 1 occupant.",
+		"visitor": "Cold storage, unit 04. Contents: 1 occupant. Identity unconfirmed."
 	},
 	"elevator": {
 		"speaker": "ZP-SYS",
 		"keep": true,
-		"text": "Service lift descending. Emergency systems entering low-power mode. Goodbye. It was nice to be needed."
+		"text": "Service lift descending. Emergency systems entering low-power mode."
 	},
 	"cold_warning": {
 		"visitor": "The fingers have gone numb. The cold is no longer outside."

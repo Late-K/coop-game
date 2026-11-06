@@ -170,6 +170,7 @@ A mix of GLaDOS and Flowey: GLaDOS's dry, clinical contempt and false politeness
 - **No names on screen.** Voices are told apart only by the colour of their text. "ZP-SYS" and "PROCTOR" are internal names used in `lines.json`; players learn them through the story (terminals, staff logs, a service manual, a nameplate in a ruined office), so finding out what to call the voice is itself a discovery.
 - Its everyday voice is **cold cyan text**: ZP-SYS, a degraded emergency system. It's scripted-sounding, clinical and harmless, and never says its name.
 - Small slips betray a mind behind it: counting iterations, "correcting" itself ("Test 4118... correction. Headcount: two."), being a little too glad to be needed.
+- **Temporarily quiet** (author's direction, 2026-11-06): PROCTOR is muted and ZP-SYS speaks only its key lines (`Story.QUIET`, `Story.SYSTEM_KEPT`: the intro, the perimeter lamps, the records warning, a vented restart); narration plays as ever. Nothing is deleted from `story/lines.json`; set `QUIET` to false to bring the voices back.
 - **The mask slips when players leave the script.** When they die, skip, rush, shoot each other, ignore the radio, or quit and come back, a second voice answers in **warm, wrong red text**: PROCTOR. Players notice there are two voices long before they can name either.
 - At the elevator, ZP-SYS "enters low-power mode" and says goodbye. It goes silent.
 

@@ -36,6 +36,12 @@ const NARRATION_COLOR := Color(0.92, 0.92, 0.92)
 const SPEAKER_BLIPS := {"ZP-SYS": "sys", "PROCTOR": "proctor"}
 ## One blip every this many typed characters.
 const BLIP_EVERY := 3
+## TEMPORARY (author's direction, 2026-11-06): the voices quietened for now. While QUIET,
+## PROCTOR says nothing at all, ZP-SYS only the few lines in SYSTEM_KEPT (things the
+## players need to know), and narration plays as ever. Nothing is deleted from lines.json:
+## set QUIET to false to bring every voice back.
+const QUIET := true
+const SYSTEM_KEPT := ["intro", "perimeter", "records_warning", "plant_vented"]
 
 var _lines := {}
 ## Every line shown this session, oldest first: {"text": String, "color": Color}. Read by the
@@ -166,6 +172,9 @@ func _queue_beat(ids: Array[String]) -> void:
 
 
 func _enqueue_beat(ids: Array[String]) -> void:
+	ids = ids.filter(func(id: String) -> bool: return not _muted(id))
+	if ids.is_empty():
+		return # nothing left to say: don't cut short what's playing
 	if _showing:
 		_drop_stale_lines()
 	var beat := _next_beat
@@ -179,6 +188,14 @@ func _enqueue_beat(ids: Array[String]) -> void:
 		_comment_once("rushing")
 	if not _showing:
 		_show_queue()
+
+
+## Quietened for now (QUIET): PROCTOR, and ZP-SYS outside SYSTEM_KEPT.
+func _muted(id: String) -> bool:
+	if not QUIET or not _lines.has(id):
+		return false
+	var speaker: String = (_lines[id] as Dictionary).get("speaker", "")
+	return speaker == "PROCTOR" or (speaker == "ZP-SYS" and id not in SYSTEM_KEPT)
 
 
 ## A newer beat has arrived: whatever older lines are still waiting are out of date.
