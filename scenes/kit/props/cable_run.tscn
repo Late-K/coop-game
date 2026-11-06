@@ -1,0 +1,222 @@
+[gd_scene format=3]
+
+[ext_resource type="Material" path="res://kit/materials/metal_dark.tres" id="1_rk5mq"]
+[ext_resource type="Material" path="res://kit/materials/rust.tres" id="2_yi4bh"]
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_ftmt5"]
+top_radius = 0.022
+bottom_radius = 0.022
+height = 0.4060605
+radial_segments = 6
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_wlb05"]
+top_radius = 0.022
+bottom_radius = 0.022
+height = 0.40058613
+radial_segments = 6
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_eda34"]
+top_radius = 0.022
+bottom_radius = 0.022
+height = 0.4133525
+radial_segments = 6
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_tdhck"]
+top_radius = 0.022
+bottom_radius = 0.022
+height = 0.3294704
+radial_segments = 6
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_6wfpe"]
+top_radius = 0.022
+bottom_radius = 0.022
+height = 0.35730436
+radial_segments = 6
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_rnb4j"]
+top_radius = 0.022
+bottom_radius = 0.022
+height = 0.35524943
+radial_segments = 6
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_bvw0d"]
+top_radius = 0.022
+bottom_radius = 0.022
+height = 0.38688165
+radial_segments = 6
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_ajhfd"]
+top_radius = 0.022
+bottom_radius = 0.022
+height = 0.42472908
+radial_segments = 6
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_k2p1s"]
+top_radius = 0.022
+bottom_radius = 0.022
+height = 0.44368273
+radial_segments = 6
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_l135l"]
+top_radius = 0.022
+bottom_radius = 0.022
+height = 0.38133645
+radial_segments = 6
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_iqsco"]
+top_radius = 0.022
+bottom_radius = 0.022
+height = 0.35740232
+radial_segments = 6
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_p77vp"]
+top_radius = 0.022
+bottom_radius = 0.022
+height = 0.34866226
+radial_segments = 6
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_w67li"]
+top_radius = 0.022
+bottom_radius = 0.022
+height = 0.4218433
+radial_segments = 6
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_wwbej"]
+top_radius = 0.022
+bottom_radius = 0.022
+height = 0.39230248
+radial_segments = 6
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_hmhq8"]
+top_radius = 0.022
+bottom_radius = 0.022
+height = 0.31530073
+radial_segments = 6
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_a23o3"]
+top_radius = 0.022
+bottom_radius = 0.022
+height = 0.38829958
+radial_segments = 6
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_dyrqg"]
+top_radius = 0.022
+bottom_radius = 0.022
+height = 0.30239597
+radial_segments = 6
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_xisi4"]
+top_radius = 0.022
+bottom_radius = 0.022
+height = 0.35204226
+radial_segments = 6
+rings = 1
+
+[node name="CableRun" type="Node3D" unique_id=1710456712]
+
+[node name="Cable" type="MeshInstance3D" parent="." unique_id=454017789]
+transform = Transform3D(0.99810064, -0.061604686, 2.6928264e-09, 0, -4.371139e-08, -1, 0.061604686, 0.99810064, -4.3628365e-08, -0.1325076, 0.03, 0.20264462)
+mesh = SubResource("CylinderMesh_ftmt5")
+surface_material_override/0 = ExtResource("1_rk5mq")
+
+[node name="Cable2" type="MeshInstance3D" parent="." unique_id=1904910033]
+transform = Transform3D(0.95571434, 0.294296, -1.2864087e-08, 0, -4.371139e-08, -1, -0.294296, 0.95571434, -4.17756e-08, -0.08606978, 0.03, 0.5967122)
+mesh = SubResource("CylinderMesh_wlb05")
+surface_material_override/0 = ExtResource("1_rk5mq")
+
+[node name="Cable3" type="MeshInstance3D" parent="." unique_id=528265280]
+transform = Transform3D(0.84243673, 0.53879523, -2.3551488e-08, 0, -4.371139e-08, -1, -0.53879523, 0.84243673, -3.682408e-08, 0.084231846, 0.03, 0.96224684)
+mesh = SubResource("CylinderMesh_eda34")
+surface_material_override/0 = ExtResource("1_rk5mq")
+
+[node name="Cable4" type="MeshInstance3D" parent="." unique_id=1587991868]
+transform = Transform3D(0.98686844, 0.16152613, -7.0605313e-09, 0, -4.371139e-08, -1, -0.16152613, 0.98686844, -4.313739e-08, 0.22219706, 0.03, 1.2989304)
+mesh = SubResource("CylinderMesh_tdhck")
+surface_material_override/0 = ExtResource("1_rk5mq")
+
+[node name="Cable5" type="MeshInstance3D" parent="." unique_id=2127810925]
+transform = Transform3D(0.88287264, 0.46961254, -2.0527416e-08, 0, -4.371139e-08, -1, -0.46961254, 0.88287264, -3.859159e-08, 0.3327034, 0.03, 1.6192296)
+mesh = SubResource("CylinderMesh_6wfpe")
+surface_material_override/0 = ExtResource("1_rk5mq")
+
+[node name="Cable6" type="MeshInstance3D" parent="." unique_id=1601515670]
+transform = Transform3D(0.9971482, 0.075467974, -3.29881e-09, 0, -4.371139e-08, -1, -0.075467974, 0.9971482, -4.3586734e-08, 0.43000567, 0.03, 1.9540749)
+mesh = SubResource("CylinderMesh_rnb4j")
+surface_material_override/0 = ExtResource("1_rk5mq")
+
+[node name="Cable7" type="MeshInstance3D" parent="." unique_id=1667832692]
+transform = Transform3D(0.9984391, -0.055851974, 2.4413673e-09, 0, -4.371139e-08, -1, 0.055851974, 0.9984391, -4.364316e-08, -0.0108040515, 0.03, 0.19313888)
+mesh = SubResource("CylinderMesh_bvw0d")
+surface_material_override/0 = ExtResource("2_yi4bh")
+
+[node name="Cable8" type="MeshInstance3D" parent="." unique_id=1998431014]
+transform = Transform3D(0.99950135, -0.031576004, 1.3802309e-09, 0, -4.371139e-08, -1, 0.031576004, 0.99950135, -4.3689592e-08, -0.028313726, 0.03, 0.5985364)
+mesh = SubResource("CylinderMesh_ajhfd")
+surface_material_override/0 = ExtResource("2_yi4bh")
+
+[node name="Cable9" type="MeshInstance3D" parent="." unique_id=1991818523]
+transform = Transform3D(0.99961305, -0.027815659, 1.2158611e-09, 0, -4.371139e-08, -1, 0.027815659, 0.99961305, -4.3694474e-08, -0.041190013, 0.03, 1.0325506)
+mesh = SubResource("CylinderMesh_k2p1s")
+surface_material_override/0 = ExtResource("2_yi4bh")
+
+[node name="Cable10" type="MeshInstance3D" parent="." unique_id=798084425]
+transform = Transform3D(0.9969726, 0.077753395, -3.3987089e-09, 0, -4.371139e-08, -1, -0.077753395, 0.9969726, -4.3579057e-08, -0.032535575, 0.03, 1.4443971)
+mesh = SubResource("CylinderMesh_l135l")
+surface_material_override/0 = ExtResource("2_yi4bh")
+
+[node name="Cable11" type="MeshInstance3D" parent="." unique_id=1914491572]
+transform = Transform3D(0.9999271, -0.012076144, 5.2786503e-10, 0, -4.371139e-08, -1, 0.012076144, 0.9999271, -4.37082e-08, -0.019868495, 0.03, 1.8131763)
+mesh = SubResource("CylinderMesh_iqsco")
+surface_material_override/0 = ExtResource("2_yi4bh")
+
+[node name="Cable12" type="MeshInstance3D" parent="." unique_id=1783882163]
+transform = Transform3D(0.9892537, 0.14620902, -6.3909993e-09, 0, -4.371139e-08, -1, -0.14620902, 0.9892537, -4.3241652e-08, 0.0034622662, 0.03, 2.1643221)
+mesh = SubResource("CylinderMesh_p77vp")
+surface_material_override/0 = ExtResource("2_yi4bh")
+
+[node name="Cable13" type="MeshInstance3D" parent="." unique_id=33661257]
+transform = Transform3D(0.92024904, 0.3913332, -1.7105718e-08, 0, -4.371139e-08, -1, -0.3913332, 0.92024904, -4.0225363e-08, 0.20254064, 0.03, 0.19410044)
+mesh = SubResource("CylinderMesh_w67li")
+surface_material_override/0 = ExtResource("1_rk5mq")
+
+[node name="Cable14" type="MeshInstance3D" parent="." unique_id=1595267744]
+transform = Transform3D(0.99967664, -0.025427818, 1.1114852e-09, 0, -4.371139e-08, -1, 0.025427818, 0.99967664, -4.3697256e-08, 0.28009358, 0.03, 0.5842887)
+mesh = SubResource("CylinderMesh_wwbej")
+surface_material_override/0 = ExtResource("1_rk5mq")
+
+[node name="Cable15" type="MeshInstance3D" parent="." unique_id=35254064]
+transform = Transform3D(0.937759, 0.34728673, -1.5180385e-08, 0, -4.371139e-08, -1, -0.34728673, 0.937759, -4.099075e-08, 0.32985574, 0.03, 0.9282146)
+mesh = SubResource("CylinderMesh_hmhq8")
+surface_material_override/0 = ExtResource("1_rk5mq")
+
+[node name="Cable16" type="MeshInstance3D" parent="." unique_id=508833064]
+transform = Transform3D(0.9808621, 0.1947039, -8.510778e-09, 0, -4.371139e-08, -1, -0.1947039, 0.9808621, -4.2874845e-08, 0.42240733, 0.03, 1.2664869)
+mesh = SubResource("CylinderMesh_a23o3")
+surface_material_override/0 = ExtResource("1_rk5mq")
+
+[node name="Cable17" type="MeshInstance3D" parent="." unique_id=1618715376]
+transform = Transform3D(0.9845217, -0.17526275, 7.6609785e-09, 0, -4.371139e-08, -1, 0.17526275, 0.9845217, -4.303481e-08, 0.4337097, 0.03, 1.6057787)
+mesh = SubResource("CylinderMesh_dyrqg")
+surface_material_override/0 = ExtResource("1_rk5mq")
+
+[node name="Cable18" type="MeshInstance3D" parent="." unique_id=423611051]
+transform = Transform3D(0.98071986, -0.19541901, 8.542036e-09, 0, -4.371139e-08, -1, 0.19541901, 0.98071986, -4.2868628e-08, 0.37281245, 0.03, 1.9272639)
+mesh = SubResource("CylinderMesh_xisi4")
+surface_material_override/0 = ExtResource("1_rk5mq")

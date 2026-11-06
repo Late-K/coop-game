@@ -5,6 +5,8 @@
 
 global uniform vec2 retro_resolution;
 
+#include "res://shaders/cutaway.gdshaderinc"
+
 uniform vec4 albedo_color : source_color = vec4(1.0);
 uniform sampler2D albedo_texture : source_color, filter_nearest, repeat_enable, hint_default_white;
 uniform vec3 emission_color : source_color = vec3(0.0);
@@ -42,6 +44,9 @@ void vertex() {
 }
 
 void fragment() {
+	if (!IN_SHADOW_PASS && cutaway_cut(world_position, INV_VIEW_MATRIX[3].xyz, false)) {
+		discard;
+	}
 	vec3 texel;
 	if (world_uv) {
 		vec3 n = abs(world_normal);

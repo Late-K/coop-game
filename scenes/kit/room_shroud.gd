@@ -1,23 +1,21 @@
 class_name RoomShroud
 extends Node3D
 ## Darkness over a room the local player isn't in. One per room, `size` metres across (X by
-## Z, centred here) on its `floor`: a black box that hides the room and everything in it
-## from the top-down camera. Rooms joined without a door (a gap, an opening) share a `zone`
-## and light up together; only what's past a door stays dark.
+## Z, centred here) on its `floor`: a solid black box that hides the room and everything in
+## it from the top-down camera. Rooms joined without a door (a gap, an opening) share a
+## `zone` and are lit together; only what's past a door stays dark, and a door held open for
+## good (Door.held_open) joins both sides.
 ##
-## Opening a door shows nothing of the room past it: it lights the moment you step in, the
-## lights flickering on (and the camera moves to it then, Player._update_camera). The room
-## you left stays lit while the door behind you is open, and fades out as it rises
-## (Door.MOVE_TIME). A door held open for good (Door.held_open) joins both sides.
-## The local player drives all this (RoomShroud.update).
+## Nothing fades or shows through: going through a door, the whole screen fades to black
+## and back (Player.pass_through), and in the dark the room left goes black and the one
+## entered is lit, all at once. The local player drives this (RoomShroud.update).
 ## Drawn on its own render layer (SHROUD_LAYER), which CCTV cameras leave out.
 
 const SHROUD_LAYER := 1 << 10 # render layer 11, "shroud"
-const HEIGHT := 2.55
+const SHADER := preload("res://shaders/room_shroud.gdshader")
+const HEIGHT := 3.2 # well above the walls, so nothing tall in a dark room shows over it
 ## How far into its walls the box reaches: to their middle (a wall is one cell thick).
 const WALL_REACH := 0.5
-## Lights coming on: (darkness, seconds) steps, a fluorescent catching.
-const FLICKER := [[0.0, 0.05], [0.7, 0.07], [0.0, 0.08], [0.45, 0.05]]
 
 @export var size := Vector2(8, 8)
 @export var floor := 0
@@ -26,11 +24,11 @@ const FLICKER := [[0.0, 0.05], [0.7, 0.07], [0.0, 0.08], [0.45, 0.05]]
 
 ## A door opened or shut somewhere (Door.set_open): what's lit is worked out again.
 static var doors_changed := true
+## Goes up whenever which rooms are lit changes (Cutaway is rebuilt then).
+static var lit_version := 0
 
-## Dark (the box drawn), or lit (fading out or gone).
+## Dark (the box drawn) or lit (gone).
 var dark := true
-var _black: StandardMaterial3D
-var _fade: Tween
 
 
 func _ready() -> void:
@@ -42,11 +40,9 @@ func _ready() -> void:
 	var mesh := BoxMesh.new()
 	mesh.size = Vector3(size.x + WALL_REACH * 2.0, HEIGHT, size.y + WALL_REACH * 2.0)
 	box.mesh = mesh
-	_black = StandardMaterial3D.new()
-	_black.albedo_color = Color.BLACK
-	_black.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_black.set_meta("retro_skip", true)
-	box.material_override = _black
+	var black := ShaderMaterial.new()
+	black.shader = SHADER # black, and cut with the near wall of the room the player's in
+	box.material_override = black
 	box.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	box.layers = SHROUD_LAYER
 	box.position.y = floor * Kit.CELL.y + HEIGHT / 2.0
@@ -60,35 +56,24 @@ func contains(world: Vector3) -> bool:
 	return absf(local.x) <= size.x / 2.0 and absf(local.z) <= size.y / 2.0
 
 
-## Lit: on at once, with a flicker (or with none, `instant`). Dark: fading out over a door's
-## travel (or at once). Solid black when dark, so nothing behind it sorts wrongly;
-## see-through only on the way.
-func set_dark(now_dark: bool, instant := false) -> void:
-	if now_dark == dark and not instant:
-		return
+## The room `world` is in, or null.
+static func at(tree: SceneTree, world: Vector3) -> RoomShroud:
+	for shroud: RoomShroud in tree.get_nodes_in_group("shrouds"):
+		if shroud.contains(world):
+			return shroud
+	return null
+
+
+## The room's floor rectangle (x0, x1, z0, z1) in world metres.
+func bounds() -> Rect2:
+	return Rect2(global_position.x - size.x / 2.0, global_position.z - size.y / 2.0, size.x, size.y)
+
+
+func set_dark(now_dark: bool) -> void:
+	if now_dark != dark:
+		lit_version += 1
 	dark = now_dark
-	if _fade:
-		_fade.kill()
-	if instant:
-		_settle(1.0 if dark else 0.0)
-		return
-	visible = true
-	_black.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	_fade = create_tween()
-	if dark:
-		_fade.tween_property(_black, "albedo_color:a", 1.0, Door.MOVE_TIME).set_trans(Tween.TRANS_SINE)
-		_fade.tween_callback(_settle.bind(1.0))
-	else:
-		for step: Array in FLICKER:
-			_fade.tween_callback(func() -> void: _black.albedo_color.a = step[0])
-			_fade.tween_interval(step[1])
-		_fade.tween_callback(_settle.bind(0.0))
-
-
-func _settle(alpha: float) -> void:
-	_black.albedo_color.a = alpha
-	_black.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-	visible = alpha > 0.0
+	visible = now_dark
 
 
 ## Which rooms light together: its zone, or the room alone.
@@ -96,11 +81,10 @@ func _key() -> String:
 	return zone if not zone.is_empty() else str(get_path())
 
 
-## The local player is at `world`: light the room it's in (with the rooms joined to it
-## without a door, or past a door held open for good); keep lit what's still lit through a
-## door standing open; darken the rest. Outside every room (a doorway, a corridor with none,
-## outdoors) it keeps the last room. The first time, it's all at once. Returns the room
-## it's in now.
+## The local player is at `world`: light the room it's in, with the rooms joined to it
+## without a door or past a door held open for good, and darken the rest, at once. Outside
+## every room (a doorway, a corridor with none, outdoors) it keeps the last room. Returns
+## the room it's in now.
 static func update(tree: SceneTree, world: Vector3, current: RoomShroud) -> RoomShroud:
 	var shrouds := tree.get_nodes_in_group("shrouds")
 	var here: RoomShroud = null
@@ -113,13 +97,8 @@ static func update(tree: SceneTree, world: Vector3, current: RoomShroud) -> Room
 		return current
 	doors_changed = false
 	var held := {} # key -> keys across doors held open
-	var open := {} # key -> keys across doors open for now
-	var lit_now := {} # keys lit (or lighting) at the moment
-	for shroud: RoomShroud in shrouds:
-		if not shroud.dark:
-			lit_now[shroud._key()] = true
 	for door: Door in tree.get_nodes_in_group("doors"):
-		if not door.is_open:
+		if not door.held_open():
 			continue
 		var sides: Array[String] = []
 		var across := door.global_basis.x.normalized() * 1.5
@@ -129,22 +108,15 @@ static func update(tree: SceneTree, world: Vector3, current: RoomShroud) -> Room
 				if shroud.contains(at):
 					sides.append(shroud._key())
 		if sides.size() == 2:
-			var links := held if door.held_open() else open
-			links.get_or_add(sides[0], []).append(sides[1])
-			links.get_or_add(sides[1], []).append(sides[0])
+			held.get_or_add(sides[0], []).append(sides[1])
+			held.get_or_add(sides[1], []).append(sides[0])
 	var lit := {here._key(): true}
 	var frontier: Array = [here._key()]
 	while not frontier.is_empty():
-		var key: String = frontier.pop_back()
-		for next: String in held.get(key, []):
+		for next: String in held.get(frontier.pop_back(), []):
 			if not lit.has(next):
 				lit[next] = true
 				frontier.append(next)
-		# Through an open door only what's lit already stays lit: nothing new comes on.
-		for next: String in open.get(key, []):
-			if not lit.has(next) and lit_now.has(next):
-				lit[next] = true
-				frontier.append(next)
 	for shroud: RoomShroud in shrouds:
-		shroud.set_dark(not lit.has(shroud._key()), current == null)
+		shroud.set_dark(not lit.has(shroud._key()))
 	return here

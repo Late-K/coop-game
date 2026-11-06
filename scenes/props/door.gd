@@ -61,6 +61,15 @@ var _by_hand := false
 var _used := false
 var _open_time := 0.0
 
+## Status light colours (see _add_marks).
+const LIGHT_OPEN := Color(0.3, 1.0, 0.45)
+const LIGHT_LOCKED := Color(1.0, 0.18, 0.12)
+const LIGHT_ICE := Color(0.55, 0.85, 1.0)
+const LIGHT_SHUT := Color(1.0, 0.62, 0.15)
+var _lights: Array[MeshInstance3D] = []
+var _light_state := Color.TRANSPARENT
+static var _light_materials := {}
+
 @onready var _closed_y := position.y
 
 
@@ -78,7 +87,69 @@ func _ready() -> void:
 		add_child(handle)
 	if lock == Lock.ICE:
 		_add_frost()
+	_add_marks()
 	set_physics_process(multiplayer.is_server())
+
+
+## Doors read at a glance, from either side: a status light on each face, the colour of
+## what the door will do (LIGHT_*), and at its foot a hazard strip with three marks, fixed
+## to the doorway whether the door's up or down. All through the world shader, so a door in a
+## cut-away near wall goes with the wall and leaves only its strip and threshold.
+func _add_marks() -> void:
+	for side in [1.0, -1.0]:
+		var light := MeshInstance3D.new()
+		var panel := BoxMesh.new()
+		panel.size = Vector3(0.03, 0.14, 0.14)
+		light.mesh = panel
+		light.position = Vector3(side * 0.165, 0.2, 1.15)
+		light.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(light)
+		_lights.append(light)
+	var base := Node3D.new()
+	base.name = "Marks"
+	base.top_level = true # stays at the doorway as the door sinks
+	add_child(base)
+	base.global_transform = Transform3D(global_basis, frame_position() - Vector3(0, Kit.WALL_HEIGHT / 2.0, 0))
+	var hazard: Material = load("res://kit/materials/floor_hazard.tres")
+	var white := StandardMaterial3D.new()
+	white.albedo_color = Color(0.85, 0.85, 0.8)
+	white.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	for side in [1.0, -1.0]:
+		_mark(base, Vector3(0.28, 0.008, Kit.DOOR_WIDTH), Vector3(side * 0.66, 0.004, 0), hazard, 0.0)
+		for k in 3:
+			_mark(base, Vector3(0.09, 0.006, 0.09), Vector3(side * 0.93, 0.003, (k - 1) * 0.9), white, PI / 4.0)
+
+
+func _mark(parent: Node3D, size: Vector3, at: Vector3, material: Material, turn: float) -> void:
+	var mark := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	mark.mesh = mesh
+	mark.material_override = material
+	mark.position = at
+	mark.rotation.y = turn
+	mark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(mark)
+
+
+## The status lights follow the door (every peer): open or openable, locked, frozen, or
+## shut and only a puzzle can open it.
+func _process(_delta: float) -> void:
+	var state := LIGHT_OPEN
+	if not is_open and not (not locked and (manual or lock != Lock.NONE)):
+		state = LIGHT_ICE if lock == Lock.ICE and locked else LIGHT_LOCKED if locked else LIGHT_SHUT
+	if state == _light_state:
+		return
+	_light_state = state
+	if not _light_materials.has(state):
+		var glow := StandardMaterial3D.new()
+		glow.albedo_color = state
+		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		glow.emission_enabled = true
+		glow.emission = state
+		_light_materials[state] = Retro._convert(glow) # through the world shader, cutaway and all
+	for light in _lights:
+		light.material_override = _light_materials[state]
 
 
 ## Server: a door opened by hand shuts once its doorway has been clear for a moment.

@@ -82,11 +82,16 @@ func open(instant := false) -> void:
 	_lamp_material.albedo_color = Color(0.3, 0.95, 0.5)
 	_lamp_material.emission = Color(0.3, 0.95, 0.5)
 	var lifted := _glass.position + Vector3.UP * GLASS_LIFT
+	# Up into the housing over the pod, and gone: left there it would float above the walls
+	# (there's no ceiling), and over the dark room's black box when the room is dark.
 	if instant:
 		_glass.position = lifted
+		_glass.visible = false
 		return
 	Sound.play_at("door", global_position + Vector3.UP * 1.5, -4.0, 15.0, 0.0, 1.3)
-	create_tween().tween_property(_glass, "position", lifted, OPEN_TIME).set_trans(Tween.TRANS_SINE)
+	var rise := create_tween()
+	rise.tween_property(_glass, "position", lifted, OPEN_TIME).set_trans(Tween.TRANS_SINE)
+	rise.tween_callback(func() -> void: _glass.visible = false)
 
 
 func _box(size: Vector3, at: Vector3, material: Material) -> MeshInstance3D:

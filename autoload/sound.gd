@@ -11,8 +11,19 @@ const SOUND_DIR := "res://audio/placeholder/"
 const AMBIENCE_FADE := 1.5
 const UI_VOICES := 6
 const SILENT_DB := -60.0
+## Lulls: in a level, the ambience doesn't drone on. Every LULL_EVERY seconds (a range) it
+## sinks to LULL_DB for LULL_LENGTH seconds, near silence, then comes back. Long silences
+## make the next sound count.
+const LULL_EVERY := Vector2(25.0, 50.0)
+const LULL_LENGTH := Vector2(6.0, 12.0)
+const LULL_DB := -22.0
+const LULL_FADE_OUT := 3.0
+const LULL_FADE_IN := 4.0
 
 var _cache := {}
+var _lull_in := 30.0
+var _lull_db := 0.0
+var _lull: Tween
 var _ui_players: Array[AudioStreamPlayer] = []
 var _next_ui := 0
 var _ambience: Array[AudioStreamPlayer] = []
@@ -34,6 +45,24 @@ func _ready() -> void:
 		_ambience.append(player)
 	_voice.bus = &"Voice"
 	add_child(_voice)
+	_lull_in = randf_range(LULL_EVERY.x, LULL_EVERY.y)
+
+
+func _process(delta: float) -> void:
+	var bus := AudioServer.get_bus_index(&"Ambience")
+	if bus < 0:
+		return
+	if get_tree().get_first_node_in_group("level") == null:
+		_lull_db = 0.0 # the menu's ambience plays straight through
+	elif _lull == null or not _lull.is_running():
+		_lull_in -= delta
+		if _lull_in <= 0.0:
+			_lull_in = randf_range(LULL_EVERY.x, LULL_EVERY.y)
+			_lull = create_tween()
+			_lull.tween_property(self, "_lull_db", LULL_DB, LULL_FADE_OUT).set_trans(Tween.TRANS_SINE)
+			_lull.tween_interval(randf_range(LULL_LENGTH.x, LULL_LENGTH.y))
+			_lull.tween_property(self, "_lull_db", 0.0, LULL_FADE_IN).set_trans(Tween.TRANS_SINE)
+	AudioServer.set_bus_volume_db(bus, _lull_db)
 
 
 func stream(sound: String) -> AudioStream:

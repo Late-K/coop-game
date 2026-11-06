@@ -20,13 +20,32 @@ extends CharacterBody3D
 const WALK_SPEED := 4.0
 const AIM_SPEED := 1.5
 const TURN_SPEED := 12.0
-## How quickly the top-down camera glides to its target (player, or a room's framing).
-const CAMERA_FOLLOW := 5.0
 ## Farther than this and the camera cuts instead of gliding (respawn, room-to-room teleport).
 const CAMERA_SNAP_DISTANCE := 12.0
-## The top-down camera looks down 60 degrees from this far away (CameraZones can pull it back).
-const CAMERA_DISTANCE := 18.0
-const CAMERA_DIRECTION := Vector3(0, 0.866025, 0.5)
+## The top-down camera: orthographic, one steady angle everywhere (CAMERA_PITCH degrees down
+## from the south), from CAMERA_DISTANCE away (which only matters for what's in front of
+## it). Each room gets a view sized to fit it whole (_room_view), between VIEW_MIN and
+## VIEW_MAX metres top to bottom; a room bigger than that is followed along its length.
+const CAMERA_DISTANCE := 20.0
+const CAMERA_PITCH := 32.0
+const VIEW_MIN := 8.5
+const VIEW_MAX := 15.0
+## Out of every room (the snowfield, a corridor with no room): this tall.
+const VIEW_OPEN := 11.0
+## Black left round a framed room (metres on the floor): at the sides and behind its back
+## wall, and in front (south), a little more, clear of the letterbox and prompt.
+const ROOM_MARGIN := 0.8
+const ROOM_MARGIN_SOUTH := 1.4
+## The camera operator (_operate_camera): how far the player can move before it follows,
+## how late it catches up (seconds), and how much the hands drift (degrees).
+const TRACK_DEADZONE := 0.8
+const TRACK_TIME := 0.45
+const SWAY_DEGREES := 0.22
+## Through a door: the screen fades to black, the room changes in the dark, and it fades
+## back in (seconds each way, and how long it stays black).
+const ROOM_FADE_OUT := 0.28
+const ROOM_FADE_HOLD := 0.12
+const ROOM_FADE_IN := 0.35
 const CUT_FADE_TIME := 0.12
 const MAX_HEALTH := 100
 const MAGAZINE_SIZE := 6
@@ -99,6 +118,14 @@ var visited := {}
 var _visit_check := 0.0
 ## The joint save screen (only the local player has one in its overlay).
 var save_prompt := SavePrompt.new()
+## The close look at an item the first time one is picked up (ItemCard), and the kinds
+## already looked at this session.
+var item_card := ItemCard.new()
+## The icon over the thing in reach (InteractCue), kept at least CUE_CLEAR pixels off the
+## character.
+var interact_cue := InteractCue.new()
+const CUE_CLEAR := 46.0
+var _examined := {}
 var warmth := MAX_WARMTH
 var _freeze_damage := 0.0
 var _warned_cold := false
@@ -115,7 +142,23 @@ var _fire_cooldown := 0.0
 var _tracer_material := StandardMaterial3D.new()
 var _last_position := Vector3.ZERO
 var _listener := AudioListener3D.new()
-var _camera_distance := CAMERA_DISTANCE
+## The room (lighting key) the camera framed last frame, to cut when it changes.
+var _camera_key := ""
+## The cutaway map for the lit area (Cutaway.build), and the lit set it was built for.
+var _cutaway := {}
+var _cutaway_version := -1
+## How tall the view is now (metres): eases to each room's fit (_room_view).
+var _view_height := VIEW_OPEN
+## The operator (_operate_camera): where they mean to point, where the camera points now
+## and how fast it's turning, and the clock for the drift.
+var _camera_aim := Vector3.ZERO
+var _camera_look := Vector3.INF
+var _camera_look_velocity := Vector3.ZERO
+var _camera_time := 0.0
+## Which ways on the floor are up and right on screen where the player stands, for reading
+## moves (taken while no direction is held: _read_screen_axes).
+var _screen_up := Vector3.FORWARD
+var _screen_right := Vector3.RIGHT
 var _stride_left := STRIDE
 var _last_health := MAX_HEALTH
 ## Waiting out a reload (the partner died): black screen, standing still.
@@ -136,13 +179,11 @@ var _wake_checked := false
 var _snow := Snowfall.new()
 ## The room the local player is in: its shroud is lifted, every other room is black.
 var _room: RoomShroud = null
-## The last room framing the camera held, and the room it was in then (kept through the
-## doorway out, until the next room).
-var _camera_zone: CameraZone = null
-var _camera_room: RoomShroud = null
 ## Walking through a door on its own (pass_through): the points still to reach.
 var _passing := false
 var _pass_path: Array[Vector3] = []
+## Fading out through a door: the room (lights, camera) doesn't change until it's black.
+var _hold_room := false
 var _pass_time := 0.0
 
 @onready var model: CharacterModel = $Model
@@ -186,7 +227,12 @@ func _ready() -> void:
 		# The world renders at low res; move the HUD and fades out to the window itself
 		# so they stay sharp. They are no longer our children, so _exit_tree frees them.
 		overlay.add_child(save_prompt)
+		overlay.add_child(item_card)
+		overlay.add_child(interact_cue)
 		overlay.reparent(get_tree().root, false)
+		# Orthographic: no perspective, the room seen flat like a plan tilted toward you.
+		third_person_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+		third_person_camera.set_cull_mask_value(12, false) # what's outside the area (Cutaway)
 		third_person_camera.make_current()
 		# Hear the world from the character (not the camera, which may be framing a room),
 		# oriented like the screen: up = north.
@@ -298,8 +344,23 @@ func pass_through(door: Door) -> void:
 	var doorway := door.frame_position()
 	doorway.y = global_position.y
 	var across := door.global_basis.x.normalized() * -side
+	# The door sinks; they walk on into the doorway and through, and as they go the whole
+	# screen fades to black. The view stays on the room being left until it's black (then
+	# the room changes: lights, camera), and once they're in the next room it fades back in.
 	await get_tree().create_timer(Door.MOVE_TIME * 0.6).timeout
 	_pass_path.assign([doorway - across * 0.2, doorway + across * PASS_BEYOND])
+	_hold_room = true
+	while _passing and _pass_path.size() > 1 and is_inside_tree():
+		await get_tree().physics_frame # seen stepping into the doorway first
+	var out := create_tween()
+	out.tween_property(fade, "color:a", 1.0, ROOM_FADE_OUT)
+	await out.finished
+	_hold_room = false
+	while _passing and is_inside_tree():
+		await get_tree().physics_frame
+	await get_tree().create_timer(ROOM_FADE_HOLD).timeout
+	if not is_dead and not _reload_wait:
+		create_tween().tween_property(fade, "color:a", 0.0, ROOM_FADE_IN)
 
 
 ## Up or down a flight (Stairs): a few steps into it, a cut through black, and out at the
@@ -358,7 +419,7 @@ func set_handheld_cracked(cracked: bool) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if (_cutting or _in_cutaway or is_dead or inventory_screen.visible or _pause_menu_open()
-			or save_prompt.visible or _reload_wait):
+			or save_prompt.visible or _reload_wait or item_card.visible):
 		return
 	if event is InputEventMouseMotion and walking_first_person and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		rotation.y -= event.relative.x * LOOK_SENSITIVITY
@@ -395,7 +456,8 @@ func _process(delta: float) -> void:
 	_update_model()
 	if is_multiplayer_authority():
 		_update_mouse()
-		_room = RoomShroud.update(get_tree(), global_position, _room)
+		if not _hold_room: # going through a door: not until the screen is black
+			_room = RoomShroud.update(get_tree(), global_position, _room)
 		_visit_check -= delta
 		if _visit_check <= 0.0:
 			_visit_check = 0.5
@@ -418,7 +480,7 @@ func _physics_process(delta: float) -> void:
 	radio_on = Radio.powered
 
 	var frozen := (focus != null or _cutting or _in_cutaway or is_dead or inventory_screen.visible
-			or _pause_menu_open() or save_prompt.visible or _reload_wait or _passing)
+			or _pause_menu_open() or save_prompt.visible or _reload_wait or _passing or item_card.visible)
 	var input := Vector2.ZERO if frozen else Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	if model.pose == CharacterModel.Pose.WAITING and input != Vector2.ZERO:
 		_set_waiting.rpc(false) # done waiting: stand up
@@ -430,12 +492,18 @@ func _physics_process(delta: float) -> void:
 	Radio.listener_position = global_position
 	_update_condition()
 	var speed := AIM_SPEED if is_aiming else WALK_SPEED
-	# The top-down camera never rotates, so screen-up is always world -Z. In first person,
-	# forward is where they look.
+	# Top-down, screen-up is wherever the camera faces: the operator turns it a little, so
+	# moves follow its view. Its angle is only taken while nothing is pressed, so the camera
+	# turning mid-walk (or cutting to the next shot) never bends the way already being held.
+	# In first person, forward is where they look.
 	var direction := Vector3(input.x, 0.0, input.y)
 	if walking_first_person:
 		direction = global_basis * direction
 		speed = FIRST_PERSON_SPEED
+	else:
+		if input == Vector2.ZERO:
+			_read_screen_axes()
+		direction = _screen_right * input.x - _screen_up * input.y
 	if _passing:
 		direction = _pass_step(delta)
 		speed = WALK_SPEED * 0.8
@@ -461,46 +529,149 @@ func _physics_process(delta: float) -> void:
 
 # --- Interaction & perspective ---------------------------------------------
 
-## The top-down camera follows the player, except inside a CameraZone, where it holds that
-## room's framing (Signalis-style fixed compositions). It keeps the framing through the
-## doorway out, and only moves on once they're in the next room (RoomShroud), as its
-## lights come on.
+## The top-down camera: orthographic, one steady angle, following the player within the room
+## they're in (it never shows past the room's walls; a room smaller than the view sits
+## centred). Rooms joined without a door it glides between; a new room past a door it cuts
+## to (in the dark of the door's fade). The near wall of the room is cut away (cutaway).
 func _update_camera(delta: float) -> void:
-	var target := global_position
-	var distance := CAMERA_DISTANCE
-	var zone: CameraZone = null
-	for area in zone_probe.get_overlapping_areas():
-		if area is CameraZone:
-			zone = area
-	if is_instance_valid(_camera_zone) and _room == _camera_room and _near_zone(_camera_zone):
-		zone = _camera_zone # same room, or its doorway: not in the next room yet
-	elif zone:
-		_camera_zone = zone
-		_camera_room = _room
-	if zone:
-		target = zone.focus_point()
-		distance = zone.distance
-	var blend := 1.0 - exp(-CAMERA_FOLLOW * delta)
-	if camera_rig.global_position.distance_to(target) > CAMERA_SNAP_DISTANCE:
-		camera_rig.global_position = target
-		_camera_distance = distance
-	else:
-		camera_rig.global_position = camera_rig.global_position.lerp(target, blend)
-		_camera_distance = lerpf(_camera_distance, distance, blend)
-	third_person_camera.position = CAMERA_DIRECTION * _camera_distance
+	var key := _room._key() if _room else ""
+	var cut := key != _camera_key or camera_rig.global_position.distance_to(global_position) > CAMERA_SNAP_DISTANCE
+	_camera_key = key
+	var view := _room_view(_room)
+	_view_height = view if cut else lerpf(_view_height, view, 1.0 - exp(-3.0 * delta))
+	third_person_camera.size = _view_height
+	_operate_camera(delta, cut)
+	_update_cutaway()
 	_listener.global_position = global_position + Vector3.UP * 1.5
 	# Top-down, up on screen is north; in first person, you hear the way you face.
 	_listener.global_basis = global_basis if walking_first_person else Basis()
 
 
-## Within a doorway's reach of the zone's box: just stepped out of it, not walked off.
-func _near_zone(zone: CameraZone) -> bool:
-	for child in zone.get_children():
-		if child is CollisionShape3D and child.shape is BoxShape3D:
-			var local: Vector3 = zone.global_transform.affine_inverse() * global_position
-			var half: Vector3 = (child.shape as BoxShape3D).size / 2.0 + Vector3.ONE * 2.0
-			return absf(local.x) < half.x and absf(local.z) < half.z
-	return false
+## Someone is working the camera. It keeps the player in frame, held inside the room's walls
+## (_framed), sliding square to the room. Like a person, it lets small moves go
+## (TRACK_DEADZONE), then catches up a beat late (TRACK_TIME). The hands are never quite
+## still (SWAY_DEGREES). A cut (`cut`) starts it fresh.
+func _operate_camera(delta: float, cut: bool) -> void:
+	var intent := _framed(global_position)
+	if cut or _camera_look == Vector3.INF:
+		_camera_aim = intent
+		_camera_look = intent
+		_camera_look_velocity = Vector3.ZERO
+	elif _camera_aim.distance_to(intent) > TRACK_DEADZONE:
+		_camera_aim = intent # out of the comfortable middle: follow
+	# A critically damped spring toward where the operator means to point.
+	var omega := 2.0 / TRACK_TIME
+	var x := omega * delta
+	var decay := 1.0 / (1.0 + x + 0.48 * x * x + 0.235 * x * x * x)
+	var change := _camera_look - _camera_aim
+	var temp := (_camera_look_velocity + omega * change) * delta
+	_camera_look_velocity = (_camera_look_velocity - omega * temp) * decay
+	_camera_look = _camera_aim + (change + temp) * decay
+	# Hands on the controls: a slow, small drift that never settles.
+	_camera_time += delta
+	var t := _camera_time
+	var reach := third_person_camera.global_position.distance_to(_camera_look) * tan(deg_to_rad(SWAY_DEGREES))
+	var drift := Vector3(sin(t * 0.37) * 0.6 + sin(t * 0.91 + 1.3) * 0.3 + sin(t * 2.3 + 0.4) * 0.1, 0.0,
+			sin(t * 0.29 + 2.1) * 0.6 + sin(t * 1.17) * 0.3 + sin(t * 2.9 + 1.0) * 0.1) * reach
+	# Orthographic, a pan is a slide: the view stays square to the room.
+	var p := deg_to_rad(CAMERA_PITCH)
+	camera_rig.global_position = _camera_look
+	third_person_camera.global_position = _camera_look + drift + Vector3(0.0, sin(p), cos(p)) * CAMERA_DISTANCE
+	third_person_camera.global_rotation = Vector3(-p, 0.0, 0.0)
+
+
+## Where on the floor to centre the view to show `at`: on it, but slid back inside the
+## walls of the room the player is in, so the view never shows much past them; across a
+## room smaller than the view, its middle.
+func _framed(at: Vector3) -> Vector3:
+	var room := _room
+	if room == null or not room.contains(global_position) and not _near_room(room):
+		return at
+	var area := _framing_area(room)
+	var aspect := third_person_camera.get_viewport().get_visible_rect().size.aspect()
+	var half := Vector2(_view_height * aspect, _view_height / sin(deg_to_rad(CAMERA_PITCH))) / 2.0
+	var framed := at
+	for axis in 2:
+		var low: float = area.position[axis] + half[axis]
+		var high: float = area.end[axis] - half[axis]
+		var value: float = at.x if axis == 0 else at.z
+		value = (low + high) / 2.0 if low > high else clampf(value, low, high)
+		if axis == 0:
+			framed.x = value
+		else:
+			framed.z = value
+	return framed
+
+
+## How tall a view fits `room` whole (its floor, the back wall standing up behind it, a
+## margin all round), within VIEW_MIN..VIEW_MAX. A room too long for that (a corridor) is
+## fitted across its depth and followed along its length.
+func _room_view(room: RoomShroud) -> float:
+	if room == null:
+		return VIEW_OPEN
+	var area := _framing_area(room)
+	var tall := area.size.y * sin(deg_to_rad(CAMERA_PITCH)) * 1.15 # inside the letterbox
+	var wide := area.size.x / third_person_camera.get_viewport().get_visible_rect().size.aspect()
+	if wide > VIEW_MAX:
+		return clampf(tall, VIEW_MIN, VIEW_MAX)
+	return clampf(maxf(tall, wide), VIEW_MIN, VIEW_MAX)
+
+
+## What of a room the view should hold, as an area of floor: the room, its back wall standing
+## up behind it (seen from the south, a wall's height reads as that much more floor beyond
+## it), and a margin all round.
+func _framing_area(room: RoomShroud) -> Rect2:
+	var behind := Kit.WALL_HEIGHT / tan(deg_to_rad(CAMERA_PITCH))
+	return room.bounds().grow_individual(ROOM_MARGIN, ROOM_MARGIN + behind, ROOM_MARGIN, ROOM_MARGIN_SOUTH)
+
+
+## Still at the room's edge (its doorway), not yet somewhere else.
+func _near_room(room: RoomShroud) -> bool:
+	return room.bounds().grow(2.0).has_point(Vector2(global_position.x, global_position.z))
+
+
+## The cutaway (Cutaway, cutaway.gdshaderinc): what's in front of every room of the area the
+## player is in (their near walls, and whatever stands south of them) is cleared away, for
+## this camera only.
+func _update_cutaway() -> void:
+	# Rebuilt only when the lit area changes: going through a door, in the black.
+	if RoomShroud.lit_version != _cutaway_version:
+		_cutaway_version = RoomShroud.lit_version
+		_cutaway = Cutaway.build(get_tree(), CAMERA_PITCH)
+		Cutaway.sort_objects(get_tree(), _cutaway)
+		if not _cutaway.is_empty():
+			RenderingServer.global_shader_parameter_set("cutaway_mask", _cutaway["texture"])
+	var on := third_person_camera.current and focus == null and not _cutaway.is_empty()
+	var origin: Vector2 = _cutaway.get("origin", Vector2.ZERO)
+	RenderingServer.global_shader_parameter_set("cutaway_area",
+			Vector4(origin.x, origin.y, _cutaway.get("floor", 0.0), 1.0 if on else 0.0))
+	RenderingServer.global_shader_parameter_set("cutaway_camera", third_person_camera.global_position)
+
+
+## Up and right on screen, as directions on the floor where the player stands: a step up the
+## screen from the player's own spot, cast back onto their floor. (The camera turns and sees
+## in perspective, so neither is simply north or east.)
+func _read_screen_axes() -> void:
+	if not third_person_camera.is_inside_tree() or not third_person_camera.current:
+		return
+	var floor_plane := Plane(Vector3.UP, global_position.y)
+	var at := third_person_camera.unproject_position(global_position)
+	var origin: Variant = _on_floor(at, floor_plane)
+	var up: Variant = _on_floor(at + Vector2(0, -24), floor_plane)
+	var right: Variant = _on_floor(at + Vector2(24, 0), floor_plane)
+	if origin == null or up == null or right == null:
+		return
+	var u: Vector3 = up - origin
+	var r: Vector3 = right - origin
+	if u.length() > 0.001 and r.length() > 0.001:
+		_screen_up = Vector3(u.x, 0, u.z).normalized()
+		_screen_right = Vector3(r.x, 0, r.z).normalized()
+
+
+func _on_floor(screen: Vector2, floor_plane: Plane) -> Variant:
+	return floor_plane.intersects_ray(third_person_camera.project_ray_origin(screen),
+			third_person_camera.project_ray_normal(screen))
+
 
 
 ## Walking in first person the mouse is captured for looking around, and freed for any
@@ -609,13 +780,14 @@ func _find_interactable() -> Interactable:
 
 
 func _update_prompt() -> void:
+	var target := _find_interactable() if not inventory_screen.visible and focus == null else null
+	_update_cue(target)
 	if inventory_screen.visible:
 		hud.set_prompt("")
 		return
 	if focus:
 		hud.set_prompt("[E / Esc] Step back")
 		return
-	var target := _find_interactable()
 	if target:
 		hud.set_prompt("[E] %s" % target.get_prompt(self))
 	elif _enemy_near():
@@ -627,6 +799,43 @@ func _update_prompt() -> void:
 			hud.set_prompt("[Click] Fire   [F] Shove")
 	else:
 		hud.set_prompt("")
+
+
+## The icon over the thing in reach (InteractCue): what kind of thing, whether it'll give,
+## and where it is on screen.
+func _update_cue(target: Interactable) -> void:
+	var camera := get_viewport().get_camera_3d()
+	if target == null or camera == null or _passing or is_dead or _reload_wait or item_card.visible:
+		interact_cue.clear()
+		return
+	var point := target.interaction_point() + Vector3.UP * 0.9
+	var cue := "use"
+	var prompt := target.get_prompt(self)
+	if target is DoorHandle:
+		var door: Door = (target as DoorHandle).door
+		point = door.frame_position() + Vector3.UP * 0.3
+		cue = "locked" if door.locked else "door"
+	elif target is Stairs:
+		cue = "door"
+	elif target is Pickup:
+		cue = "take"
+		point = target.global_position + Vector3.UP * 0.75
+	elif target.view_point:
+		cue = "look"
+	for word in ["Locked", "Sealed", "Frozen", "No power", "Barred", "dead"]:
+		if prompt.contains(word):
+			cue = "locked"
+	if camera.is_position_behind(point):
+		interact_cue.clear()
+		return
+	# The camera draws into the low-res game view; the cue is on the window over it.
+	var scale_to := interact_cue.get_viewport_rect().size / camera.get_viewport().get_visible_rect().size
+	var at := camera.unproject_position(point) * scale_to
+	# Never over the character (a door in the near wall is right below them on screen).
+	var me := camera.unproject_position(global_position + Vector3.UP * 0.9) * scale_to
+	if at.distance_to(me) < CUE_CLEAR:
+		at = me + Vector2(CUE_CLEAR, 0.0)
+	interact_cue.point_at(target, at, cue)
 
 
 ## An enemy up and close enough to be worth shoving (the prompt says how).
@@ -678,7 +887,11 @@ func _receive_item(id: String, count: int) -> void:
 	Sound.play_ui("pickup")
 	if leftover > 0:
 		push_warning("Inventory overflowed by %d %s" % [leftover, id])
-	notify("Took %s" % Items.display_name(id))
+	if not _examined.has(id) and not is_dead and not _reload_wait:
+		_examined[id] = true
+		item_card.show_item(id, count) # the first of its kind: a close look
+	else:
+		notify("Took %s" % Items.display_name(id))
 
 
 ## Opens the ZP-SYS terminal: plain (Tab), on an item box's stash, or on a tube to send from.

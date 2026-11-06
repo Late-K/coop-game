@@ -124,7 +124,8 @@ func _ready() -> void:
 	_subject_side()
 	_visitor_side()
 	_outside()
-	_frame()
+	_dress()
+	_tint_lights()
 	_map()
 	_shroud()
 	# In front of the pod: where the wake leaves the Subject, and where a death before the
@@ -943,29 +944,115 @@ func _door_zones(storey: int) -> Dictionary:
 	return zone_of
 
 
-## One camera zone per room, sized to it. The passage and the snowfield get none (the
-## camera follows; the Visitor is in first person outside anyway).
-func _frame() -> void:
+## Rooms left as they are: tight routes, a floor a puzzle needs clear (records' shelving
+## for the listener), the ways down, the outside. Safe rooms are always furnished alike.
+const UNDRESSED := ["Snowfield", "DuctNorth", "DuctWest", "DuctSouth", "Records", "Stairwell",
+		"Lift", "Airlock", "ServiceRun"]
+
+## What lies about in each kind of room, by its wall style: [prop, tall]. Tall things never
+## go on a south wall, where they'd stand between the camera and the room.
+const CLUTTER := {
+	WALL_CHAMBER: [["debris", false], ["fallen_panels", false], ["stain", false], ["cable_run", false]],
+	WALL_DECAYED: [["debris", false], ["fallen_panels", false], ["growth", false], ["stain", false],
+			["cable_run", false]],
+	WALL_MACHINERY: [["pipes", false], ["barrel", false], ["crate", false], ["debris", false],
+			["trolley", false], ["equipment_rack", true], ["cable_run", false]],
+	WALL_OFFICE: [["filing_cabinet", true], ["office_chair", false], ["dead_plant", false], ["crate", false],
+			["equipment_rack", true], ["stain", false]],
+	WALL_CONCRETE: [["crate", false], ["barrel", false], ["debris", false], ["cable_run", false], ["stain", false]],
+}
+
+
+## Lived-in rooms: clutter along the walls (CLUTTER), a few pieces per room by its size, the
+## same every build (seeded by the room's name). Never in front of a door (Enemy.DOOR_CLEAR
+## and then some), never on top of anything already placed, never out in the floor.
+func _dress() -> void:
+	var taken: Array[Vector3] = []
+	for parent in ["Props", "Placements", "Story", "Lights"]:
+		for node in level.get_node(parent).get_children():
+			if node is Node3D:
+				taken.append((node as Node3D).position)
+	var doors: Array[Node] = level.get_node("Doors").get_children()
 	for room: String in ROOMS:
-		if room in ["Passage", "Snowfield", "DuctNorth", "DuctWest", "DuctSouth", "ServiceRun"]:
-			continue
 		var r: Array = ROOMS[room]
-		var zone := _place("res://scenes/kit/camera_zone.tscn", "CameraZones",
-				Vector3((r[0] + r[1]) / 2.0, 1.5, (r[2] + r[3]) / 2.0))
-		zone.name = room
-		var shape := BoxShape3D.new()
-		shape.size = Vector3(r[1] - r[0], 3, r[3] - r[2])
-		zone.get_node("CollisionShape3D").shape = shape
-		level.set_editable_instance(zone, true)
-	for room: String in UPPER_ROOMS:
-		var r: Array = UPPER_ROOMS[room]
-		var zone := _place("res://scenes/kit/camera_zone.tscn", "CameraZones",
-				Vector3((r[0] + r[1]) / 2.0, Kit.CELL.y + 1.5, (r[2] + r[3]) / 2.0))
-		zone.name = room
-		var shape := BoxShape3D.new()
-		shape.size = Vector3(r[1] - r[0], 3, r[3] - r[2])
-		zone.get_node("CollisionShape3D").shape = shape
-		level.set_editable_instance(zone, true)
+		if room in UNDRESSED or room.ends_with("SafeRoom") or not CLUTTER.has(r[5]):
+			continue
+		var palette: Array = CLUTTER[r[5]]
+		var rng := RandomNumberGenerator.new()
+		rng.seed = hash(room)
+		var want := clampi((r[1] - r[0]) * (r[3] - r[2]) / 12, 1, 6)
+		var placed := 0
+		for attempt in 60:
+			if placed >= want:
+				break
+			var side := rng.randi() % 4 # north, south, west, east wall
+			var pick: Array = palette[rng.randi() % palette.size()]
+			if pick[1] and side == 1:
+				continue
+			var at: Vector3
+			var facing: Basis
+			match side:
+				0:
+					at = Vector3(rng.randf_range(r[0] + 1.0, r[1] - 1.0), 0, r[2] + 0.6)
+					facing = Basis()
+				1:
+					at = Vector3(rng.randf_range(r[0] + 1.0, r[1] - 1.0), 0, r[3] - 0.6)
+					facing = FACE_NORTH
+				2:
+					at = Vector3(r[0] + 0.6, 0, rng.randf_range(r[2] + 1.0, r[3] - 1.0))
+					facing = FACE_EAST
+				_:
+					at = Vector3(r[1] - 0.6, 0, rng.randf_range(r[2] + 1.0, r[3] - 1.0))
+					facing = FACE_WEST
+			if taken.any(func(p: Vector3) -> bool: return Vector2(p.x - at.x, p.z - at.z).length() < 1.6):
+				continue
+			if doors.any(func(door: Node) -> bool: return _before_door(door as Node3D, at)):
+				continue
+			if not pick[1]:
+				facing = Basis(Vector3.UP, rng.randf_range(-0.5, 0.5)) * facing # left where it fell
+			var prop := _place(PROPS + pick[0] + ".tscn", "Props", at, facing)
+			prop.name = "%s%s%d" % [room, (pick[0] as String).to_pascal_case(), placed]
+			taken.append(at)
+			placed += 1
+
+
+## The two sides lit differently, so they never feel like one building: the Subject's in cold
+## blue-white, the Visitor's in sodium amber. Each lamp leans that way from the colour it was
+## given. Safe rooms (identical everywhere) and the ducts both crawl through are left alone.
+const SUBJECT_LIGHT := Color(0.68, 0.84, 1.0)
+const VISITOR_LIGHT := Color(1.0, 0.68, 0.38)
+const VISITOR_ROOMS := ["Airlock", "IntakeOffice", "SecurityWing", "SecurityOffice", "Records",
+		"BreakerRoom", "Stairwell", "SecurityStore", "RecordsLoft"]
+const UNTINTED := ["DuctNorth", "DuctWest", "DuctSouth", "Snowfield"]
+
+
+func _tint_lights() -> void:
+	for lamp in level.get_node("Lights").get_children():
+		var light := lamp.get_node_or_null("Light") as KitLight
+		if light == null:
+			continue
+		var room := _room_at(lamp.position)
+		if room.is_empty() or room in UNTINTED or room.ends_with("SafeRoom"):
+			continue
+		var side := VISITOR_LIGHT if room in VISITOR_ROOMS else SUBJECT_LIGHT
+		light.light_color = light.light_color.lerp(side, 0.55)
+
+
+## The room (ROOMS or UPPER_ROOMS) a point is in, or "".
+func _room_at(at: Vector3) -> String:
+	var upper := at.y > Kit.CELL.y - 0.5
+	var rooms: Dictionary = UPPER_ROOMS if upper else ROOMS
+	for room: String in rooms:
+		var r: Array = rooms[room]
+		if at.x >= r[0] and at.x < r[1] and at.z >= r[2] and at.z < r[3]:
+			return room
+	return ""
+
+
+## In front of (or in) a door's opening, either side, with room to walk through.
+func _before_door(door: Node3D, at: Vector3) -> bool:
+	var local := door.transform.affine_inverse() * Vector3(at.x, door.position.y, at.z)
+	return absf(local.x) < 3.4 and absf(local.z) < Kit.DOOR_WIDTH / 2.0 + 1.0
 
 
 func _door(at: Vector3, basis: Basis, manual: bool) -> Door:

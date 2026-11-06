@@ -73,7 +73,7 @@ func _build_environments() -> void:
 	facility.background_color = Color.BLACK
 	facility.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	facility.ambient_light_color = Color(0.5, 0.5, 0.52)
-	facility.ambient_light_energy = 0.12
+	facility.ambient_light_energy = 0.06 # deep blacks: what a lamp doesn't reach stays dark
 	facility.fog_enabled = true
 	facility.fog_light_color = Color.BLACK
 	facility.fog_density = 0.008
@@ -83,8 +83,8 @@ func _build_environments() -> void:
 	facility.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
 	facility.glow_hdr_threshold = 1.0
 	facility.adjustment_enabled = true
-	facility.adjustment_contrast = 1.12
-	facility.adjustment_saturation = 0.85
+	facility.adjustment_contrast = 1.22
+	facility.adjustment_saturation = 0.8
 	ResourceSaver.save(facility, "res://kit/facility_environment.tres")
 
 	# A blizzard: an arm's length of ground, then nothing but white. Lit lamps (which ignore

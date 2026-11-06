@@ -177,6 +177,7 @@ toggle_retro={
 
 3d_render/layer_10="players"
 3d_render/layer_11="shroud"
+3d_render/layer_12="outside"
 3d_physics/layer_1="world"
 3d_physics/layer_2="enemy"
 3d_physics/layer_3="interactable"
@@ -197,4 +198,16 @@ rendering_device/driver.windows="d3d12"
 retro_resolution={
 "type": "vec2",
 "value": Vector2(0, 0)
+}
+cutaway_mask={
+"type": "sampler2D",
+"value": ""
+}
+cutaway_area={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+cutaway_camera={
+"type": "vec3",
+"value": Vector3(0, 0, 0)
 }
